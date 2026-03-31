@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscripciones Pro | Gestión COVA</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary: #4f46e5; 
+            --primary-light: #f5f3ff;
+            --bg: #f8fafc; 
+            --surface: #ffffff; 
+            --border: #e2e8f0; 
+            --text-main: #0f172a; 
+            --text-light: #64748b;
+            --danger: #ef4444; 
+            --radius: 24px;
+        }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg); color: var(--text-main); 
+            margin: 0; padding: 0; line-height: 1.6;
+        }
+
+        .container { max-width: 1400px; margin: auto; padding: 40px 20px; }
+        
+        header { text-align: center; margin-bottom: 40px; }
+        header h1 {
+            font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px;
+            background: linear-gradient(90deg, #1e293b, #4f46e5);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .main-actions { display: flex; justify-content: center; gap: 10px; margin-bottom: 40px; flex-wrap: wrap; }
+        .btn-primary { 
+            padding: 14px 28px; border-radius: 100px; background: var(--text-main); 
+            color: white; border: none; font-weight: 700; cursor: pointer; 
+            box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.2); transition: 0.3s;
+            font-size: 0.85rem;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(15, 23, 42, 0.3); }
+        .btn-sync { background: var(--primary); }
+
+        .month-section { margin-bottom: 50px; }
+        .month-label { 
+            display: inline-flex; background: #1e293b; color: white; 
+            padding: 12px 32px; border-radius: 100px; font-weight: 700; 
+            margin-bottom: 25px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 30px; }
+
+        .course-card { 
+            background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); 
+            transition: 0.3s; display: flex; flex-direction: column; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        }
+        .course-card:hover { border-color: var(--primary); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
+        
+        .course-card.drag-over { border: 2px dashed var(--primary); background: var(--primary-light); transform: scale(1.02); }
+
+        .course-header { padding: 30px; border-bottom: 1px solid #f8fafc; position: relative; }
+        .course-title { font-weight: 800; font-size: 1.2rem; color: #1e293b; margin: 0 0 15px 0; line-height: 1.2; }
+        
+        .info-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .info-tag { 
+            font-size: 0.75rem; font-weight: 700; color: var(--primary); 
+            background: var(--primary-light); padding: 6px 14px; border-radius: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .card-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .input-mini { 
+            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border); 
+            font-size: 0.85rem; font-family: inherit; transition: 0.2s;
+        }
+
+        .student-list { padding: 10px 20px; max-height: 300px; overflow-y: auto; background: #fcfcfd; }
+        .student-item { 
+            padding: 14px 18px; margin-bottom: 10px; border-radius: 16px; background: white; 
+            border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;
+            cursor: grab; transition: 0.2s;
+        }
+        .student-item:active { cursor: grabbing; opacity: 0.5; }
+        .student-item:hover { border-color: var(--primary); }
+        .student-info b { display: block; font-size: 0.9rem; color: var(--text-main); }
+        .student-info small { color: var(--text-light); font-weight: 600; font-size: 0.75rem; }
+
+        .btn-add-student {
+            margin: 5px 20px; padding: 12px; border-radius: 14px; background: var(--primary-light);
+            border: 1px dashed var(--primary); color: var(--primary); font-weight: 700;
+            font-size: 0.8rem; cursor: pointer; transition: 0.2s;
+        }
+
+        .btn-import-card {
+            margin: 5px 20px 20px 20px; padding: 12px; border-radius: 14px; background: #f1f5f9;
+            border: 1px solid #cbd5e1; color: #475569; font-weight: 700;
+            font-size: 0.8rem; cursor: pointer; transition: 0.2s;
+        }
+
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(15, 23, 42, 0.6); display: none; align-items: center; 
+            justify-content: center; z-index: 1000; backdrop-filter: blur(8px); 
+        }
+        .modal-content { 
+            background: white; padding: 40px; border-radius: 32px; width: 95%; 
+            max-width: 550px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal-content h2 { font-weight: 800; margin-top: 0; text-align: center; color: var(--text-main); font-size: 1.6rem; margin-bottom: 25px; }
+        .modal-field { margin-bottom: 20px; }
+        .modal-field label { display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-main); }
+        .modal-input { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid var(--border); font-family: inherit; box-sizing: border-box; }
+
+        .modal-upload-zone {
+            border: 2px dashed var(--border); border-radius: 20px; padding: 25px;
+            text-align: center; margin: 25px 0; cursor: pointer; transition: 0.3s;
+            background: var(--bg);
+        }
+        .modal-upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+        .modal-upload-zone p { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-light); }
+        .modal-upload-zone b { color: var(--primary); display: block; margin-top: 5px; }
+        #fileStatus { font-size: 0.75rem; color: #10b981; margin-top: 10px; font-weight: 700; }
+
+        .modal-buttons { display: flex; gap: 15px; margin-top: 30px; }
+        .btn-modal { padding: 16px; border-radius: 16px; border: none; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.9rem; transition: 0.2s; }
+        .btn-modal-confirm { background: var(--primary); color: white; }
+        .btn-modal-cancel { background: #f1f5f9; color: var(--text-light); }
+
+        .teacher-select { 
+            position: absolute; top: 100%; left: 0; width: 100%; 
+            background: white; border: 1px solid var(--border); border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; display: none; margin-top: 5px;
+        }
+        .teacher-option { padding: 12px 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+        .teacher-option:hover { background: var(--primary-light); color: var(--primary); }
+
+        .controls-wrapper { background: white; padding: 25px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 30px; }
+        .filter-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .filter-btn { padding: 10px 24px; border-radius: 100px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: 0.2s; }
+        .filter-btn.active { background: var(--text-main); color: white; }
+
+        .delete-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; transition: 0.2s; }
+        .delete-btn:hover { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Gestión de Inscripciones</h1>
+    </header>
+
+    <div class="main-actions">
+        <button class="btn-primary" onclick="abrirModal()">➕ Crear Curso Manual</button>
+        <button class="btn-primary btn-sync" onclick="save(true)">💾 Sincronizar Asistencia</button>
+        <button class="btn-primary" style="background:#64748b" onclick="document.getElementById('fileIn').click()">👤 Carga Masiva</button>
+        <button class="btn-primary" style="background:#166534" onclick="exportarExcelMes()">📊 Excel por Mes</button>
+        <button class="btn-primary" style="background:#991b1b" onclick="vaciarTodo()">⚠️ Vaciar Todo</button>
+        <input type="file" id="fileIn" style="display:none" onchange="handleFile(this)">
+    </div>
+
+    <div class="controls-wrapper" id="controls">
+        <div class="filter-group" id="monthFilters"></div>
+    </div>
+
+    <div id="mainDashboard"></div>
+</div>
+
+<div class="modal-overlay" id="modalCurso">
+    <div class="modal-content">
+        <h2>Configurar Nuevo Grupo</h2>
+        
+        <div class="modal-field">
+            <label>Nombre del Curso</label>
+            <input type="text" id="m_nombreCurso" class="modal-input" placeholder="Ej: Excel Avanzado">
+        </div>
+        
+        <div class="modal-field">
+            <label>Mes Correspondiente</label>
+            <input type="text" id="m_mesCurso" class="modal-input" placeholder="Ej: ABRIL">
+        </div>
+
+        <div class="modal-upload-zone" onclick="document.getElementById('fileInModal').click()">
+            <p>¿Tienes una planilla para este curso?</p>
+            <b>Haz clic para importar alumnos (Excel)</b>
+            <input type="file" id="fileInModal" style="display:none" onchange="previewFileModal(this)">
+            <div id="fileStatus"></div>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn-modal btn-modal-cancel" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-modal btn-modal-confirm" onclick="confirmarCursoManual()">Crear y Guardar Grupo</button>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="fileInCard" style="display:none" onchange="procesarImportCard(this)">
+
+<script>
+    let todosLosAlumnos = JSON.parse(localStorage.getItem('alumnos')) || [];
+    let asignaciones = JSON.parse(localStorage.getItem('asignaciones')) || {};
+    let filtroMes = 'TODOS';
+    let tempAlumnosModal = [];
+    let currentImportTarget = { mes: '', curso: '' };
+
+    function save(alertar = false) {
+        localStorage.setItem('alumnos', JSON.stringify(todosLosAlumnos));
+        localStorage.setItem('asignaciones', JSON.stringify(asignaciones));
+
+        const bridge = {};
+        todosLosAlumnos.forEach(p => {
+            const m = String(p['MES']).trim().toUpperCase();
+            const c = String(p['¿En qué curso desea inscribirse?']).trim();
+            const idDoc = `${m}-${c}`.replace(/\s+/g, '_');
+            
+            if(!bridge[m]) bridge[m] = {};
+            if(!bridge[m][c]) {
+                bridge[m][c] = { 
+                    docente: asignaciones[idDoc]?.docente || 'Sin Docente', 
+                    horario: asignaciones[idDoc]?.horario || 'Sin Horario', 
+                    alumnos: [] 
+                };
+            }
+            bridge[m][c].alumnos.push({ 
+                nombre: p['Nombre y Apellido completo'], 
+                ci: p['Cédula de identidad sin puntos'] 
+            });
+        });
+        
+        localStorage.setItem('academySync_DB', JSON.stringify(bridge));
+        if(alertar) alert("✅ Datos sincronizados con Asistencia");
+    }
+
+    function vaciarTodo() {
+        if (confirm("⚠️ ¿Estás seguro de que deseas borrar ABSOLUTAMENTE TODO?")) {
+            localStorage.clear();
+            todosLosAlumnos = [];
+            asignaciones = {};
+            location.reload();
+        }
+    }
+
+    function exportarExcelMes() {
+        if (todosLosAlumnos.length === 0) return alert("No hay datos");
+        const mesExport = filtroMes;
+        const wb = XLSX.utils.book_new();
+        const data = [["REPORTE DE INSCRIPCIONES - " + (mesExport === 'TODOS' ? "GENERAL" : mesExport)], []];
+        const filtrados = todosLosAlumnos.filter(a => mesExport === 'TODOS' || String(a.MES).trim().toUpperCase() === mesExport);
+        const cursos = [...new Set(filtrados.map(a => a['¿En qué curso desea inscribirse?']))];
+        cursos.forEach(c => {
+            const rowM = filtrados.find(a => a['¿En qué curso desea inscribirse?'] === c).MES;
+            const id = `${String(rowM).trim().toUpperCase()}-${c}`.replace(/\s+/g, '_');
+            const as = asignaciones[id] || { docente: '---', horario: '---' };
+            data.push(["CURSO:", c], ["DOCENTE:", as.docente], ["HORARIO:", as.horario], ["#", "Nombre", "CI"]);
+            filtrados.filter(a => a['¿En qué curso desea inscribirse?'] === c).forEach((a, i) => data.push([i+1, a['Nombre y Apellido completo'], a['Cédula de identidad sin puntos']]));
+            data.push([]); 
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Reporte");
+        XLSX.writeFile(wb, `Inscripciones_${mesExport}.xlsx`);
+    }
+
+    function previewFileModal(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, raw: false });
+            let hIdx = -1, cN = -1, cC = -1;
+            for (let i = 0; i < Math.min(rows.length, 20); i++) {
+                const r = rows[i]; if (!r) continue;
+                cN = r.findIndex(c => String(c || "").toLowerCase().includes("nombre") && String(c || "").toLowerCase().includes("apellido"));
+                cC = r.findIndex(c => (String(c || "").toLowerCase().includes("ci") || String(c || "").toLowerCase().includes("cedula") || String(c || "").toLowerCase().includes("identidad")) && !String(c || "").toLowerCase().includes("mail"));
+                if (cN !== -1 && cC !== -1) { hIdx = i; break; }
+            }
+            if (hIdx === -1) return alert("No detectado");
+            tempAlumnosModal = [];
+            for (let i = hIdx + 1; i < rows.length; i++) {
+                const r = rows[i]; if (!r || !r[cN]) continue;
+                tempAlumnosModal.push({ tempId: 'st-' + Date.now() + '-' + i, 'Nombre y Apellido completo': String(r[cN]).trim(), 'Cédula de identidad sin puntos': String(r[cC] || "---").trim() });
+            }
+            document.getElementById('fileStatus').innerText = `📊 Detectados ${tempAlumnosModal.length}`;
+        }; reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function handleFile(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            procesarJSON(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
+        }; reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function procesarJSON(json) {
+        const mapeados = json.map((f, i) => {
+            const ks = Object.keys(f);
+            // CORRECCIÓN: Ignorar explícitamente columnas que contengan 'mail' o 'correo' al buscar el CI
+            const findNombre = ks.find(k => (k.toLowerCase().includes('nombre') || k.toLowerCase().includes('participante')) && !k.toLowerCase().includes('mail') && !k.toLowerCase().includes('correo'));
+            const findCI = ks.find(k => (k.toLowerCase().includes('ci') || k.toLowerCase().includes('cedula') || k.toLowerCase().includes('identidad')) && !k.toLowerCase().includes('mail') && !k.toLowerCase().includes('correo'));
+            const findMes = ks.find(k => k.toLowerCase().includes('mes'));
+            const findCurso = ks.find(k => k.toLowerCase().includes('curso') || k.toLowerCase().includes('inscripción'));
+
+            return {
+                tempId: 'st-' + Date.now() + '-' + i,
+                'MES': f[findMes] || 'S/M',
+                '¿En qué curso desea inscribirse?': f[findCurso] || 'General',
+                'Nombre y Apellido completo': f[findNombre] || 'S/N',
+                'Cédula de identidad sin puntos': f[findCI] || '---'
+            };
+        }).filter(a => a['Nombre y Apellido completo'] !== 'S/N');
+        todosLosAlumnos = todosLosAlumnos.concat(mapeados);
+        save(); render();
+    }
+
+    function triggerImportCard(m, c) {
+        currentImportTarget = { mes: m, curso: c };
+        document.getElementById('fileInCard').click();
+    }
+
+    function procesarImportCard(input) {
+        if(!input.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, raw: false });
+            let hIdx = -1, cN = -1, cC = -1;
+            for (let i = 0; i < Math.min(rows.length, 20); i++) {
+                const r = rows[i]; if (!r) continue;
+                cN = r.findIndex(c => (String(c || "").toLowerCase().includes("nombre") || String(c || "").toLowerCase().includes("apellido")) && !String(c || "").toLowerCase().includes("mail"));
+                cC = r.findIndex(c => (String(c || "").toLowerCase().includes("ci") || String(c || "").toLowerCase().includes("cedula") || String(c || "").toLowerCase().includes("identidad")) && !String(c || "").toLowerCase().includes("mail"));
+                if (cN !== -1 && cC !== -1) { hIdx = i; break; }
+            }
+            if (hIdx === -1) return alert("No se detectaron columnas de Nombre y CI");
+            const nuevos = [];
+            for (let i = hIdx + 1; i < rows.length; i++) {
+                const r = rows[i]; if (!r || !r[cN]) continue;
+                nuevos.push({ 
+                    tempId: 'st-' + Date.now() + '-' + i, 
+                    'MES': currentImportTarget.mes,
+                    '¿En qué curso desea inscribirse?': currentImportTarget.curso,
+                    'Nombre y Apellido completo': String(r[cN]).trim(), 
+                    'Cédula de identidad sin puntos': String(r[cC] || "---").trim() 
+                });
+            }
+            todosLosAlumnos = todosLosAlumnos.concat(nuevos);
+            save(); render();
+            input.value = "";
+        }; reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function render() {
+        const dashboard = document.getElementById('mainDashboard');
+        dashboard.innerHTML = "";
+        const estruct = {};
+        const mesesSet = new Set();
+        todosLosAlumnos.forEach(p => {
+            const m = String(p['MES']).trim().toUpperCase();
+            const c = String(p['¿En qué curso desea inscribirse?']).trim();
+            mesesSet.add(m);
+            if(!estruct[m]) estruct[m] = {};
+            if(!estruct[m][c]) estruct[m][c] = [];
+            estruct[m][c].push(p);
+        });
+        actualizarFiltros(Array.from(mesesSet).sort());
+        Object.keys(estruct).sort().forEach(m => {
+            if(filtroMes !== 'TODOS' && filtroMes !== m) return;
+            const section = document.createElement('div');
+            section.className = 'month-section';
+            section.innerHTML = `<div class="month-label">📅 ${m}</div><div class="groups-grid"></div>`;
+            const grid = section.querySelector('.groups-grid');
+            Object.keys(estruct[m]).sort().forEach(c => {
+                const id = `${m}-${c}`.replace(/\s+/g, '_');
+                const card = document.createElement('div');
+                card.className = 'course-card';
+                
+                card.ondragover = (e) => { e.preventDefault(); card.classList.add('drag-over'); };
+                card.ondragleave = () => { card.classList.remove('drag-over'); };
+                card.ondrop = (e) => {
+                    e.preventDefault();
+                    card.classList.remove('drag-over');
+                    const alumnoId = e.dataTransfer.getData("text");
+                    const alumno = todosLosAlumnos.find(a => a.tempId === alumnoId);
+                    if (alumno) {
+                        alumno.MES = m;
+                        alumno['¿En qué curso desea inscribirse?'] = c;
+                        save(); render();
+                    }
+                };
+
+                card.innerHTML = `
+                    <div class="course-header">
+                        <div style="display:flex; justify-content:space-between">
+                            <h3 class="course-title">${c}</h3>
+                            <button class="delete-btn" onclick="eliminarGrupo('${m}','${c}')">🗑️</button>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-tag">👤 ${estruct[m][c].length} Alumnos</div>
+                            <div class="info-tag">👨‍🏫 ${asignaciones[id]?.docente || 'Sin Docente'}</div>
+                            <div class="info-tag">⏰ ${asignaciones[id]?.horario || 'Sin Horario'}</div>
+                        </div>
+                        <div class="card-controls">
+                            <input type="text" class="input-mini" placeholder="Horario..." value="${asignaciones[id]?.horario || ''}" onchange="updateHorario('${id}', this.value)">
+                            <div style="position:relative">
+                                <button class="input-mini" style="text-align:left; cursor:pointer" onclick="toggleDocentes('${id}')">Docente ▼</button>
+                                <div class="teacher-select" id="sel-${id}">
+                                    <div class="teacher-option" onclick="setDocente('${id}','Angel Ortega')">Angel Ortega</div>
+                                    <div class="teacher-option" onclick="setDocente('${id}','Damaris Cristaldo')">Damaris Cristaldo</div>
+                                    <div class="teacher-option" onclick="setDocente('${id}','Rolando Aguilar')">Rolando Aguilar</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="student-list">
+                        ${estruct[m][c].map(p => `
+                            <div class="student-item" draggable="true" ondragstart="event.dataTransfer.setData('text', '${p.tempId}')">
+                                <div class="student-info">
+                                    <b>${p['Nombre y Apellido completo']}</b>
+                                    <small>CI: ${p['Cédula de identidad sin puntos']}</small>
+                                </div>
+                                <button class="delete-btn" onclick="eliminarAlumno('${p.tempId}')">✕</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-add-student" onclick="agregarAlumnoManual('${m}','${c}')">➕ Agregar Alumno Manual</button>
+                    <button class="btn-import-card" onclick="triggerImportCard('${m}','${c}')">📥 Importar Planilla Excel</button>
+                `;
+                grid.appendChild(card);
+            });
+            dashboard.appendChild(section);
+        });
+    }
+
+    function toggleDocentes(id) { const el = document.getElementById('sel-'+id); el.style.display = el.style.display === 'block' ? 'none' : 'block'; }
+    function setDocente(id, n) { if(!asignaciones[id]) asignaciones[id]={}; asignaciones[id].docente=n; save(); render(); }
+    function updateHorario(id, v) { if(!asignaciones[id]) asignaciones[id]={}; asignaciones[id].horario=v; save(); render(); }
+    function eliminarAlumno(id) { if(confirm("¿Eliminar?")) { todosLosAlumnos = todosLosAlumnos.filter(x => x.tempId !== id); save(); render(); } }
+    function eliminarGrupo(m, c) { if(confirm(`¿Borrar ${c}?`)) { todosLosAlumnos = todosLosAlumnos.filter(a => !(String(a['MES']).trim().toUpperCase() === m && String(a['¿En qué curso desea inscribirse?']).trim() === c)); save(); render(); } }
+    function agregarAlumnoManual(m, c) { const n = prompt("Nombre:"); if(n) { todosLosAlumnos.push({ tempId: 'st-' + Date.now(), MES: m, '¿En qué curso desea inscribirse?': c, 'Nombre y Apellido completo': n, 'Cédula de identidad sin puntos': prompt("CI:"), }); save(); render(); } }
+    function abrirModal() { document.getElementById('modalCurso').style.display = 'flex'; }
+    function cerrarModal() { document.getElementById('modalCurso').style.display = 'none'; document.getElementById('m_nombreCurso').value = ""; document.getElementById('m_mesCurso').value = ""; document.getElementById('fileStatus').innerText = ""; tempAlumnosModal = []; }
+    function confirmarCursoManual() {
+        const c = document.getElementById('m_nombreCurso').value.trim();
+        const m = document.getElementById('m_mesCurso').value.trim().toUpperCase();
+        if(!c || !m) return alert("Faltan datos");
+        const id = `${m}-${c}`.replace(/\s+/g, '_');
+        if(!asignaciones[id]) asignaciones[id] = { docente: '', horario: '' };
+        if(tempAlumnosModal.length > 0) {
+            tempAlumnosModal.forEach(a => { a.MES = m; a['¿En qué curso desea inscribirse?'] = c; });
+            todosLosAlumnos = todosLosAlumnos.concat(tempAlumnosModal);
+        } else {
+            todosLosAlumnos.push({ tempId: 'manual-' + Date.now(), MES: m, '¿En qué curso desea inscribirse?': c, 'Nombre y Apellido completo': 'Nuevo Alumno', 'Cédula de identidad sin puntos': '---' });
+        }
+        save(); render(); cerrarModal();
+    }
+    function actualizarFiltros(meses) {
+        const f = document.getElementById('monthFilters');
+        f.innerHTML = `<button class="filter-btn ${filtroMes === 'TODOS' ? 'active' : ''}" onclick="setFiltro('TODOS')">TODOS</button>`;
+        meses.forEach(m => { f.innerHTML += `<button class="filter-btn ${filtroMes === m ? 'active' : ''}" onclick="setFiltro('${m}')">${m}</button>`; });
+    }
+    function setFiltro(m) { filtroMes = m; render(); }
+    document.addEventListener('DOMContentLoaded', render);
+</script>
+</body>
+</html>

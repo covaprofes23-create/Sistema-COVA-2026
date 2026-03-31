@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Auditoría Estratégica de Competencias - COVA</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --cova-dark: #002D5B;
+            --cova-gold: #b8975d;
+            --accent-blue: #0984e3;
+            --danger: #d63031;
+            --warning: #f39c12;
+            --bg: #f0f2f5;
+        }
+
+        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; color: #2d3436; }
+        
+        .admin-bar {
+            background: white; padding: 15px; display: flex; justify-content: center; gap: 15px;
+            position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+            align-items: center;
+        }
+
+        .btn { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.3s; }
+        .btn-import { background: var(--accent-blue); color: white; }
+        .btn-logo { background: var(--cova-dark); color: white; }
+        .btn-print { background: #27ae60; color: white; }
+
+        .sheet {
+            background: white; width: 210mm; min-height: 296mm; padding: 15mm 20mm; margin: 25px auto;
+            box-sizing: border-box; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.15);
+            page-break-after: always; display: none; overflow: hidden;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--cova-dark); padding-bottom: 12px; margin-bottom: 20px; }
+        .logo-slot { width: 190px; height: 75px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .logo-slot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .address-text { text-align: right; font-size: 9.5px; color: #636e72; line-height: 1.4; }
+
+        .report-title { text-align: center; margin-bottom: 25px; }
+        .report-title h1 { color: var(--cova-dark); font-size: 22px; text-transform: uppercase; margin: 0; letter-spacing: 1.5px; }
+        .company-manual { 
+            color: var(--cova-gold); font-weight: 900; font-size: 18px; 
+            border-bottom: 2px solid var(--cova-gold); display: inline-block; min-width: 300px; outline: none; margin-top: 8px;
+        }
+
+        .analysis-card { background: #f8fafc; border-left: 5px solid var(--cova-dark); padding: 12px 15px; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
+        .card-label { font-size: 9px; font-weight: 800; color: var(--cova-dark); text-transform: uppercase; margin-bottom: 5px; display: block; letter-spacing: 0.8px; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
+        th { background: var(--cova-dark); color: white; padding: 10px; text-align: left; text-transform: uppercase; border: 1px solid var(--cova-dark); }
+        td { padding: 9px; border: 1px solid #d1d8e0; outline: none; }
+
+        .executive-summary { font-size: 12px; line-height: 1.5; text-align: justify; color: #2f3640; }
+        .sync-name { color: var(--cova-gold); font-weight: bold; }
+
+        .footer { position: absolute; bottom: 10mm; left: 20mm; right: 20mm; border-top: 1px solid #eee; padding-top: 10px; text-align: center; font-size: 8.5px; color: #b2bec3; }
+
+        .welcome-msg { text-align: center; padding: 100px; color: var(--cova-dark); }
+
+        @media print {
+            .admin-bar, .welcome-msg { display: none !important; }
+            body { background: white; padding: 0; }
+            .sheet { margin: 0 !important; box-shadow: none !important; display: block !important; border: none !important; min-height: 297mm; }
+            .logo-slot { border: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-bar">
+        <input type="file" id="fileInput" hidden accept=".csv, .xlsx, .xls" onchange="handleFile(this)">
+        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">1. Importar Test (Excel/CSV)</button>
+        <input type="file" id="upLogo" hidden accept="image/*" onchange="processLogo(this)">
+        <button class="btn btn-logo" onclick="document.getElementById('upLogo').click()">2. Cargar Logo</button>
+        <button class="btn btn-print" onclick="window.print()">3. Generar Reporte Final</button>
+    </div>
+
+    <div id="welcome" class="welcome-msg">
+        <h2>Consultoría Académica COVA</h2>
+        <p>Cargue el archivo de resultados para generar el análisis de impacto corporativo.</p>
+    </div>
+
+    <div class="sheet" id="groupSheet">
+        <div class="header">
+            <div class="logo-slot logo-container"><span>LOGO</span></div>
+            <div class="address-text">
+                <strong>INSTITUTO COVA E.A.S.</strong><br>
+                Calle Séptima, Angel Torres 1027 casi,<br>
+                Fernando de la Mora, Paraguay | 2026
+            </div>
+        </div>
+
+        <div class="report-title">
+            <h1>Auditoría Estratégica de Capital Humano</h1>
+            <div class="company-manual" contenteditable="true" id="companyInput" oninput="syncCompany(this)">ESCRIBIR NOMBRE DE LA EMPRESA</div>
+        </div>
+
+        <div class="analysis-card">
+            <span class="card-label">Diagnóstico de Situación Corporativa</span>
+            <div class="executive-summary" contenteditable="true">
+                El presente informe técnico de auditoría evalúa la madurez digital y eficiencia operativa del equipo en <span class="sync-name">NOMBRE DE LA EMPRESA</span>. Los resultados consolidados evidencian una dependencia crítica de procesos manuales. Se identifica que la falta de automatización mediante herramientas avanzadas genera una vulnerabilidad alta ante errores de integridad de datos y tiempos de respuesta ineficientes.
+            </div>
+        </div>
+
+        <div class="card-label" style="margin-left:5px">Consolidado de Evaluaciones</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Puntaje</th>
+                    <th>Nivel Detectado</th>
+                    <th>Dictamen Académico</th>
+                </tr>
+            </thead>
+            <tbody id="groupTableBody"></tbody>
+        </table>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="analysis-card" style="border-left-color: var(--danger);">
+                <span class="card-label">Riesgos Operativos Detectados</span>
+                <div style="font-size: 10.5px; color: #444;" contenteditable="true">
+                    • <b>Fuga de Productividad:</b> Tareas de limpieza de datos consumen horas hombre innecesarias.<br>
+                    • <b>Riesgo de Información:</b> Elevada probabilidad de error humano en reportes financieros.<br>
+                    • <b>Obsolescencia:</b> Métodos de trabajo reactivos que impiden el análisis proactivo del negocio.
+                </div>
+            </div>
+            <div class="analysis-card" style="border-left-color: var(--accent-blue);">
+                <span class="card-label">Objetivos de Mitigación</span>
+                <div style="font-size: 10.5px; color: #444;" contenteditable="true">
+                    • <b>Estandarización:</b> Asegurar que la información sea confiable y bien organizada.<br>
+                    • <b>Automatización:</b> Ahorrar tiempo real mediante procesos automáticos y lógica.<br>
+                    • <b>BI & Modelado:</b> Transformar datos en decisiones estratégicas de alto impacto.
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">Confidencial - Personal de equipo autorizado por COVA para <span class="sync-name">NOMBRE DE LA EMPRESA</span></div>
+    </div>
+
+    <div id="individualContainer"></div>
+
+    <script>
+        function handleFile(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                const processedData = jsonData.map(row => {
+                    const puntaje = row['Puntuación'] || row['Puntaje'] || 0;
+                    const nombre = row['Nombre y Apellido'] || row['Nombre'] || "Colaborador";
+                    
+                    let actual = "Básico"; 
+                    let recomendado = "Intermedio";
+                    
+                    if (puntaje > 34) { 
+                        actual = "Intermedio"; 
+                        recomendado = "Avanzado"; 
+                    } else if (puntaje < 21) { 
+                        actual = "Inicial"; 
+                        recomendado = "Básico"; 
+                    }
+                    
+                    return { nombre, puntaje, actual, recomendado };
+                });
+
+                renderReports(processedData);
+                document.getElementById('welcome').style.display = 'none';
+                document.getElementById('groupSheet').style.display = 'block';
+                syncCompany(document.getElementById('companyInput'));
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function getRoadmapHTML(nivel) {
+            if (nivel === "Básico") {
+                return `
+                    <b>Objetivo:</b> Construir la base de datos de forma correcta y realizar cálculos administrativos esenciales.<br>
+                    <b>Competencias clave:</b><br>
+                    • Dominio de la Sintaxis de Fórmulas (Suma, Promedio, Contar).<br>
+                    • Gestión de Formatos de Celda para reportes legibles y profesionales.<br>
+                    • Uso de Filtros y Ordenamiento para la extracción rápida de información.<br>
+                    • Creación de Gráficos Representativos para visualización de datos simples.<br>
+                    <b>Valor para la empresa:</b> Reducción de errores manuales en la entrada de datos y estandarización de archivos.
+                `;
+            } else if (nivel === "Intermedio") {
+                return `
+                    <b>Objetivo:</b> Cruzar grandes volúmenes de datos y automatizar tareas repetitivas mediante lógica.<br>
+                    <b>Competencias clave:</b><br>
+                    • <b>Macros Grabadas:</b> Automatización de flujos de trabajo (formatos, limpieza) sin necesidad de escribir código todavía.<br>
+                    • <b>Funciones Lógicas y Búsqueda:</b> Dominio de SI, Y, O y el uso experto de BUSCARV o XLOOKUP.<br>
+                    • <b>Tablas Dinámicas Avanzadas:</b> Creación de resúmenes dinámicos con segmentación de datos.<br>
+                    • <b>Validación y Protección:</b> Creación de listas desplegables y protección de hojas o celdas para garantizar la integridad.<br>
+                    • <b>Formato Condicional:</b> Reglas visuales complejas para identificar tendencias automáticamente.<br>
+                    <b>Valor para la empresa:</b> Aumento drástico en la velocidad de respuesta y generación de reportes multidimensionales.
+                `;
+            } else if (nivel === "Avanzado") {
+                return `
+                    <b>Objetivo:</b> Diseñar sistemas de información integrados que procesen datos de múltiples fuentes automáticamente.<br>
+                    <b>Competencias clave:</b><br>
+                    • <b>Power Query & Power Pivot:</b> Conexión a bases de datos externas, limpieza (ETL) y creación de modelos relacionales.<br>
+                    • <b>Matrices Dinámicas:</b> Uso de fórmulas de nueva generación como FILTRAR, ORDENAR y UNICOS.<br>
+                    • <b>Análisis Predictivo:</b> Uso de Solver, Buscar Objetivo y herramientas estadísticas para proyecciones.<br>
+                    • <b>Dashboards de Control:</b> Construcción de paneles interactivos (Cuadros de Mando) y Power Pivot.<br>
+                    <b>Valor para la empresa:</b> Visibilidad total de los KPIs en tiempo real y capacidad de análisis proactivo del negocio.
+                `;
+            }
+            return "";
+        }
+
+        function renderReports(data) {
+            const tableBody = document.getElementById('groupTableBody');
+            const individualContainer = document.getElementById('individualContainer');
+            tableBody.innerHTML = ''; individualContainer.innerHTML = '';
+
+            data.forEach(item => {
+                tableBody.innerHTML += `<tr><td>${item.nombre}</td><td>${item.puntaje}/40</td><td>${item.actual}</td><td>Iniciar ${item.recomendado}</td></tr>`;
+
+                const page = document.createElement('div');
+                page.className = 'sheet'; page.style.display = 'block';
+                page.innerHTML = `
+                    <div class="header">
+                        <div class="logo-slot logo-container"><span>LOGO</span></div>
+                        <div class="address-text">Consultoría Técnica de Nivelación Académica<br>División Corporativa COVA</div>
+                    </div>
+                    <div class="report-title" style="margin-bottom:20px;">
+                        <h1 style="font-size:20px;">Dictamen Técnico de Competencias</h1>
+                        <div class="sync-name" style="font-size:13px; text-transform:uppercase;">[NOMBRE DE LA EMPRESA]</div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <span class="card-label">Identificación del Colaborador Evaluado</span>
+                        <div style="font-size: 16px; font-weight: bold; color:var(--cova-dark);" contenteditable="true">${item.nombre}</div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:5px;">
+                        <div class="analysis-card"><span class="card-label">Score de Auditoría</span><div style="font-size: 18px; font-weight: bold;">${item.puntaje} / 40 Puntos</div></div>
+                        <div class="analysis-card" style="border-left-color: var(--accent-blue);"><span class="card-label">Nivel Recomendado</span><div style="font-size: 15px; font-weight: bold; color:var(--accent-blue);">${item.recomendado}</div></div>
+                    </div>
+
+                    <div class="analysis-card">
+                        <span class="card-label">Análisis de Conflictos y Limitaciones Operativas</span>
+                        <div class="executive-summary" contenteditable="true" style="font-size:11.5px;">
+                            Se identifica un <b>conflicto de eficiencia técnico-operativo</b>. El colaborador resuelve incidencias mediante métodos de ejecución manual, lo que imposibilita el manejo de volúmenes de datos superiores a los actuales. Esta limitación genera una **dependencia de tiempos extensos** para la generación de reportes e impacta directamente en la toma de decisiones ágil de <span class="sync-name">LA EMPRESA</span>.
+                        </div>
+                    </div>
+
+                    <div class="analysis-card" style="background: #f0fdf4; border-left-color: var(--accent-blue);">
+                        <span class="card-label">Hoja de Ruta de Mitigación Académica: Excel ${item.recomendado}</span>
+                        <div style="font-size:11px; line-height: 1.4; text-align: justify;" contenteditable="true">
+                            ${getRoadmapHTML(item.recomendado)}
+                        </div>
+                    </div>
+
+                    <div class="analysis-card">
+                        <span class="card-label">Dimensiones Evaluadas en el Test</span>
+                        <div style="font-size: 9px; color: #7f8c8d; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                            <div>1. Lógica y Sintaxis de Fórmulas</div>
+                            <div>2. Gestión de Estructuras de Archivos</div>
+                            <div>3. Automatización (Grabadora de Macros)</div>
+                            <div>4. Modelado y Tablas Dinámicas</div>
+                            <div>5. Análisis Predictivo y Dashboards</div>
+                            <div>6. Integridad (Validación y Protección)</div>
+                        </div>
+                    </div>
+
+                    <div class="footer">Este documento es propiedad de COVA para <span class="sync-name">NOMBRE DE LA EMPRESA</span> | 2026</div>
+                `;
+                individualContainer.appendChild(page);
+            });
+        }
+
+        function syncCompany(el) {
+            const names = document.querySelectorAll('.sync-name');
+            names.forEach(s => s.innerText = el.innerText || "NOMBRE DE LA EMPRESA");
+        }
+
+        function processLogo(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelectorAll('.logo-container').forEach(div => {
+                        div.innerHTML = `<img src="${e.target.result}">`; div.style.border = "none";
+                    });
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>

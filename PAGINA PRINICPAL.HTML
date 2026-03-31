@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVA - Damaris Fun Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Gochi+Hand&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFD600;
+            --white: #FFFFFF;
+            --bg: #F8FAFC;
+            --text: #1E293B;
+            --accent: #6366F1;
+            --spotify: #1DB954;
+            --fun-pink: #FF7EB9;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; background-color: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; padding: 15px; overflow: hidden; }
+        /* --- HEADER --- */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 10px 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 15px; flex-shrink: 0; }
+        .brand { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 800; }
+        .logo-sq { background: var(--primary); padding: 8px; border-radius: 10px; display: flex; }
+        .live-info { text-align: center; }
+        .clock-big { font-size: 22px; font-weight: 800; display: block; line-height: 1; }
+        .date-small { font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 600; }
+        /* --- GRID --- */
+        .dashboard-grid { display: grid; grid-template-columns: 1.8fr 1.2fr; grid-template-rows: 1.4fr 1.6fr; grid-gap: 15px; flex-grow: 1; min-height: 0; }
+        .widget { background: var(--white); border-radius: 28px; padding: 18px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); }
+        /* --- FRASE MÁGICA --- */
+        .phrase-hero { background: linear-gradient(135deg, #FFD600 0%, #FF9F00 100%); justify-content: center; align-items: center; text-align: center; transition: background 0.5s ease; }
+        #phrase-display { font-size: 26px; font-weight: 800; margin: 12px 0; line-height: 1.2; transition: transform 0.3s; }
+        /* CALENDARIO INTERACTIVO */
+        .calendar-widget { background: var(--accent); color: white; padding: 15px; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .cal-header button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: 800; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 11px; }
+        .cal-day-name { font-weight: 800; opacity: 0.7; padding-bottom: 5px; }
+        .cal-number { padding: 6px 0; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .cal-number:hover { background: rgba(255,255,255,0.2); }
+        .today { background: var(--primary); color: #000; font-weight: 800; }
+        .selected-day { border: 2px solid var(--primary); }
+        /* SECCIÓN INFERIOR */
+        .bottom-section { grid-column: 1 / 3; display: grid; grid-template-columns: 1.3fr 1.2fr 0.8fr 0.7fr; grid-gap: 15px; }
+        .notes-area { display: flex; flex-direction: column; gap: 8px; }
+        .notes-grid { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 10px; flex-grow: 1; }
+        .sticky-note { padding: 10px; border-radius: 5px 5px 15px 5px; font-family: 'Gochi Hand', cursive; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 4px 4px 8px rgba(0,0,0,0.05); position: relative; }
+        .c1 { background: #FFD1D1; transform: rotate(-1deg); }
+        .c2 { background: #C4E4FF; transform: rotate(1deg); }
+        .music-card { background: var(--spotify); color: white; border: none; padding: 15px; }
+        .music-tag { font-size: 10px; font-weight: 800; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 10px; margin-bottom: 10px; display: inline-block; }
+        .music-list-container { display: flex; flex-direction: column; gap: 6px; flex-grow: 1; justify-content: space-between; }
+        .music-item { background: rgba(255,255,255,0.12); padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-size: 11px; }
+        /* CURIOSIDADES ENTRETENIDAS */
+        .fact-widget { background: #6C5CE7; color: white; border: none; position: relative; }
+        .fact-label { font-size: 10px; font-weight: 800; background: var(--fun-pink); padding: 3px 8px; border-radius: 8px; width: fit-content; margin-bottom: 10px; }
+        .fact-bubble-fun { background: white; color: var(--text); padding: 12px; border-radius: 20px 20px 20px 5px; font-size: 11px; font-weight: 700; flex-grow: 1; display: flex; align-items: center; position: relative; box-shadow: 0 10px 0px rgba(0,0,0,0.1); transition: 0.3s; }
+        .fact-bubble-fun::after { content: "💡"; position: absolute; right: -10px; top: -10px; font-size: 20px; }
+        /* RISAS */
+        .joke-widget { background: #FF7675; color: white; border: none; }
+        .joke-box-fun { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 15px; font-size: 11px; font-style: italic; flex-grow: 1; display: flex; align-items: center; border-left: 4px solid var(--primary); }
+        .btn-action { background: var(--white); color: var(--text); border: none; padding: 6px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 9px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<header class="top-nav">
+    <div class="brand"><div class="logo-sq">📊</div> COVA</div>
+    <div class="live-info">
+        <span class="clock-big" id="clk">00:00:00</span>
+        <span class="date-small" id="dt">Cargando...</span>
+    </div>
+    <div class="weather-top">Asunción, PY ☀️ 28°C</div>
+</header>
+<main class="dashboard-grid">
+    <section class="widget phrase-hero" id="phrase-widget">
+        <div id="phrase-cat" style="font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; color: #D97706;">MOTIVACIÓN</div>
+        <h2 style="font-size: 12px; margin: 10px 0 0 0; opacity: 0.7;">✨ DAMARIS, TU FRASE DE HOY</h2>
+        <p id="phrase-display">"¡Tu potencial es infinito, dale con todo!"</p>
+        <button onclick="updateMagicPhrase()" style="background: #1E293B; color:white; border:none; padding: 8px 20px; border-radius: 12px; cursor:pointer; font-weight:800; font-size:10px;">SORPRÉNDEME ✨</button>
+    </section>
+    <section class="widget calendar-widget">
+        <div class="cal-header">
+            <button onclick="changeMonth(-1)">❮</button>
+            <div id="cal-month-name" style="font-weight: 800;">MES AÑO</div>
+            <button onclick="changeMonth(1)">❯</button>
+        </div>
+        <div class="cal-grid" id="calendar-body"></div>
+    </section>
+    <div class="bottom-section">
+        <div class="notes-area">
+            <span style="font-size: 11px; font-weight: 800; color: #6366F1;">📌 ¡NO TE OLVIDES! ✨</span>
+            <div class="notes-grid">
+                <div class="sticky-note c1" contenteditable="true">Beber agua 💧</div>
+                <div class="sticky-note c2" contenteditable="true">Reportes 📊</div>
+                <div class="sticky-note c3" contenteditable="true" style="background: #D1FFD7; transform: rotate(1deg);">Pausas 🧘‍♀️</div>
+                <div class="sticky-note c4" contenteditable="true" style="background: #FFF9C4; transform: rotate(-1deg);">Metas ⭐</div>
+            </div>
+        </div>
+        <section class="widget music-card">
+            <div class="music-tag" id="day-tag">SABOR LATINO</div>
+            <div class="music-list-container" id="playlist-container"></div>
+        </section>
+        <section class="widget fact-widget">
+            <div class="fact-label">¡DATO LOCO! 🚀</div>
+            <div id="fact-display" class="fact-bubble-fun">¡El corazón de un camarón está en su cabeza! 🦐</div>
+            <button class="btn-action" onclick="updateFact()">¡DAME OTRO! 🎲</button>
+        </section>
+        <section class="widget joke-widget">
+            <div class="fact-label" style="background: #FDCB6E;">¡JAJAJA! 😂</div>
+            <div class="joke-box-fun" id="joke-display">¿Qué hace un programador con hambre? Come un byte. 💻</div>
+            <button onclick="updateJoke()" class="btn-action">SIGUIENTE 🔄</button>
+        </section>
+    </div>
+</main>
+
+<script>
+    let currentDate = new Date();
+    function updateDateTime() {
+        const now = new Date();
+        document.getElementById('clk').innerText = now.toLocaleTimeString('es-PY', {hour12: true});
+        document.getElementById('dt').innerText = now.toLocaleDateString('es-PY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    setInterval(updateDateTime, 1000); updateDateTime();
+    function renderCalendar() {
+        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        const today = new Date();
+        document.getElementById('cal-month-name').innerText = `${new Intl.DateTimeFormat('es-PY', {month:'long'}).format(currentDate)} ${year}`;
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const calendarBody = document.getElementById('calendar-body');
+        calendarBody.innerHTML = '<div class=\"cal-day-name\">L</div><div class=\"cal-day-name\">M</div><div class=\"cal-day-name\">M</div><div class=\"cal-day-name\">J</div><div class=\"cal-day-name\">V</div><div class=\"cal-day-name\">S</div><div class=\"cal-day-name\">D</div>';
+        let startingDay = (firstDay === 0) ? 6 : firstDay - 1;
+        for (let i = 0; i < startingDay; i++) calendarBody.appendChild(document.createElement('div'));
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.classList.add('cal-number');
+            dayDiv.innerText = day;
+            if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayDiv.classList.add('today');
+            dayDiv.onclick = () => {
+                document.querySelectorAll('.cal-number').forEach(d => d.classList.remove('selected-day'));
+                dayDiv.classList.add('selected-day');
+            };
+            calendarBody.appendChild(dayDiv);
+        }
+    }
+    function changeMonth(dir) { currentDate.setMonth(currentDate.getMonth() + dir); renderCalendar(); }
+    renderCalendar();
+    const latinPlaylists = {
+        0: { tag: "Domingo de Samba 🇧🇷", icon: "🇧🇷", lists: [{t:"Samba Verão", d:"Vibra Brasil"}, {t:"Bossa Nova", d:"Paz total"}, {t:"Pagode Hits", d:"Alegría"}, {t:"Samba Enredo", d:"Carnaval"}] },
+        1: { tag: "Lunes Rock Latino 🎸", icon: "🎸", lists: [{t:"Soda Stereo Mix", d:"Clásicos"}, {t:"Enanitos Verdes", d:"Rock"}, {t:"Maná Essentials", d:"Energía"}, {t:"Rock Argento", d:"Poder"}] },
+        2: { tag: "Martes de Cumbia 💃", icon: "💃", lists: [{t:"Villera Mix", d:"Ritmo"}, {t:"Ángeles Azules", d:"Sonidera"}, {t:"Cumbia Pop", d:"Vibra"}, {t:"Damas Gratis", d:"Flow"}] },
+        3: { tag: "Miércoles de Tecno ⚡", icon: "⚡", lists: [{t:"Latin House", d:"Bailando"}, {t:"Tecno Merengue", d:"90s"}, {t:"Brazilian Bass", d:"Poder"}, {t:"Tribal", d:"Ritmo"}] },
+        4: { tag: "Jueves de Reggaeton 🔥", icon: "🔥", lists: [{t:"Old School", d:"Perreo"}, {t:"Bad Bunny", d:"Nuevo"}, {t:"Karol G", d:"Bichota"}, {t:"Balvin Flow", d:"Colores"}] },
+        5: { tag: "Viernes de Fiesta 🎉", icon: "🎉", lists: [{t:"Salsa & Sabor", d:"¡Azúcar!"}, {t:"Merengue Power", d:"Sin parar"}, {t:"Bachata Hits", d:"Sentimiento"}, {t:"Vallenato", d:"Colombia"}] },
+        6: { tag: "Sábado de Mezcla 🎶", icon: "🎶", lists: [{t:"Latin Pop 2026", d:"Éxitos"}, {t:"Ska Latino", d:"Energía"}, {t:"Funk Carioca", d:"Baile"}, {t:"Urbano Mix", d:"Noche"}] }
+    };
+    function updateMusic() {
+        const day = new Date().getDay();
+        const config = latinPlaylists[day];
+        document.getElementById('day-tag').innerText = config.tag;
+        document.getElementById('playlist-container').innerHTML = config.lists.map(l => `
+            <div class=\"music-item\"><span>${config.icon}</span><div class=\"music-info\"><strong>${l.t}</strong><small>${l.d}</small></div></div>
+        `).join('');
+    }
+    updateMusic();
+    const allPhrases = {
+        motivacion: [
+            "¡Tu potencial es infinito!","Ivai la cuadro, pero iporã la marco","Tu meta esta a pasos", "Hoy brillarás más que un reporte sin errores.", "Haz que hoy valga la pena, Damaris.", "La disciplina te llevará donde la motivación no alcance.", "Tu único límite es tu mente.", "No cuentes los días, haz que los días cuenten.", "El éxito es la suma de pequeños esfuerzos diarios.", "Cree en ti y serás imparable.", "Si puedes soñarlo, puedes hacerlo.", "La mejor forma de predecir el futuro es creándolo."
+        ],
+        divertida: [
+            "Tu ignorancia viene incluida con autoestima","Arriero hû eíra barato","Arriéro rembe puku","El terere me llama","El café es mi combustible.", "Mi nivel de energía: Error 404.", "Sigue tus sueños, pero si ves un Excel, huye.", "No soy vaga, estoy en modo ahorro de energía.", "Mi lunes debería tener un botón de 'Saltar anuncio'.", "Estado civil: En una relación seria con mi cama.", "Hacer nada es difícil, nunca sabes cuándo terminas.", "Si la vida te da limones, pide sal y tequila.", "Yo no sufro de locura, la disfruto cada minuto.", "El cerebro es una aplicación maravillosa, ojalá todos la descargaran."
+        ],
+        cultural: [
+            "Paraguay es el corazón de América.", "El tereré no se comparte.", "Aprender es la mejor aventura.", "Donde hay música, no puede haber cosa mala.", "La cultura es el ejercicio de la libertad.", "Un pueblo sin cultura es un pueblo sin alma.", "Rohayhu Paraguay: más que palabras, un sentimiento.", "La verdadera sabiduría está en reconocer la propia ignorancia.", "El saber no ocupa lugar, pero abre todos los caminos.", "Tradición no es adorar las cenizas, sino mantener vivo el fuego."
+        ]
+    };
+    const phraseColors = ["#FFD600", "#FF9F00", "#6366F1", "#1DB954", "#FD79A8"];
+    function updateMagicPhrase() {
+        const widget = document.getElementById('phrase-widget');
+        const display = document.getElementById('phrase-display');
+        const cats = Object.keys(allPhrases);
+        const cat = cats[Math.floor(Math.random() * cats.length)];
+        const phrase = allPhrases[cat][Math.floor(Math.random() * allPhrases[cat].length)];
+        display.style.transform = "scale(0.9)";
+        setTimeout(() => {
+            document.getElementById('phrase-cat').innerText = cat.toUpperCase();
+            display.innerText = `\"${phrase}\"`;
+            display.style.transform = "scale(1)";
+            const randColor = phraseColors[Math.floor(Math.random() * phraseColors.length)];
+            widget.style.background = `linear-gradient(135deg, ${randColor} 0%, #FFEF5E 100%)`;
+        }, 150);
+    }
+    const facts = [
+        "¡El corazón de un camarón está en su cabeza! 🦐","Lluvia de Diamantes: En planetas como Júpiter y Saturno, las condiciones de presión son tan extremas que literalmente llueven diamantes del cielo. 💎","Encendedores vs. Cerillas: El encendedor se inventó antes que las cerillas (fósforos). El primer encendedor fue creado en 1823. 🔥", "¡Es imposible estornudar con ojos abiertos! 👁️", "¡El pulpo tiene tres corazones! 🐙", "¡Las vacas tienen mejores amigas! 🐮", "¡Las hormigas nunca duermen! 🐜", "¡La miel es el único alimento que no caduca! 🍯", "¡Los delfines duermen con un ojo abierto! 🐬", "¡Las jirafas no tienen cuerdas vocales! 🦒", "¡Los flamencos son rosas por lo que comen! 🦩", "¡El Monte Everest crece 4 milímetros cada año! 🏔️", "¡Los gatos tienen 32 músculos en cada oreja! 🐱", "¡Un caracol puede dormir hasta por 3 años! 🐌", "¡Los caballitos de mar se emparejan de por vida! 💙", "¡El sol es 400 veces más grande que la luna! ☀️", "¡Los humanos compartimos el 50% de ADN con los plátanos! 🍌", "¡Las mariposas saborean con los pies! 🦋", "¡El sonido viaja 4 veces más rápido en el agua! 🌊", "¡Júpiter es tan grande que caben 1,300 Tierras! 🪐", "¡Las nutrias se dan la mano al dormir para no separarse! 🦦", "¡Existen más estrellas que granos de arena en el mundo! ✨","Plutón y Rusia: Rusia tiene más superficie terrestre que todo el planeta Plutón. 🇷🇺🌑","Captcha es trabajo gratis: Cada vez que resuelves un Captcha (marcando semáforos o hidrantes), en realidad estás ayudando a entrenar a las IAs de Google para que reconozcan objetos en el mundo real. 🤖","Contraseñas peligrosas: Aunque parezca broma, durante casi 20 años (en plena Guerra Fría), la contraseña de los misiles nucleares de EE. UU. fue simplemente 00000000. 🔒"
+    ];
+    function updateFact() { document.getElementById('fact-display').innerText = facts[Math.floor(Math.random()*facts.length)]; }
+    function updateJoke() {
+        const jokes = [
+            "¿Qué hace un programador con hambre? Come un byte. 💻",
+            "¿Cómo se dice pañuelo en japonés? Sacamoco. 🇯🇵",
+            "¿Qué es un terapeuta? 1024 gigapeutas. 🤓",
+            "¿Por qué los programadores confunden Halloween con Navidad? Porque Oct 31 == Dec 25. 🎃🎄",
+            "Solo hay 10 tipos de personas: las que saben binario y las que no. 0️⃣1️⃣",
+            "¿Por qué el programador se quedó en la ducha para siempre? Porque las instrucciones decían: Enjuagar, lavar, repetir. 🚿",
+            "Un SQL entra en un bar, se acerca a dos mesas y pregunta: '¿Puedo unirme a ustedes?' 📊",
+            "¿Qué le dice un GIF a un PNG? 'Anímate, hombre'. 🖼️",
+            "¿Cuál es el animal favorito de un programador? El 'Phyton'. 🐍",
+            "¿Qué hace una abeja en el gimnasio? ¡Zumba! 🐝",
+            "¿Cómo se queda un mago después de comer? Magordito. 🪄",
+            "Había una vez un perro que se llamaba 'Chiste', se murió y se acabó el chiste. 🐕"
+        ];
+        document.getElementById('joke-display').innerText = jokes[Math.floor(Math.random()*jokes.length)];
+    }
+</script>
+</body>
+</html>

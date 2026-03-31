@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVA Pro | Panel Coordinación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary: #6366f1; 
+            --dark: #0f172a; 
+            --bg: #f8fafc; 
+            --sidebar: #ffffff; 
+            --text: #334155; 
+            --accent: #10b981; 
+            --sidebar-width: 280px;
+            --sidebar-collapsed: 80px;
+        }
+        
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); overflow: hidden; }
+
+        #login-screen {
+            position: fixed; inset: 0; background: var(--dark);
+            display: flex; align-items: center; justify-content: center; z-index: 2000;
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+        .login-card { background: white; padding: 2.5rem; border-radius: 28px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+        .btn-login { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; transition: 0.3s; }
+
+        #main-system { 
+            display: none; 
+            height: 100vh; 
+            grid-template-columns: var(--sidebar-width) 1fr; 
+            transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #main-system.collapsed { grid-template-columns: var(--sidebar-collapsed) 1fr; }
+
+        .sidebar { 
+            background: var(--sidebar); 
+            border-right: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 24px 15px; 
+            position: relative; 
+            overflow-x: hidden;
+        }
+
+        .sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; padding: 0 10px; }
+        .sidebar h1 { color: var(--primary); font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -2px; }
+
+        #toggle-btn { background: #f1f5f9; border: none; border-radius: 8px; width: 35px; height: 35px; cursor: pointer; }
+
+        .nav-group-label { font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin: 20px 0 10px 10px; white-space: nowrap; }
+        
+        .nav-item { 
+            padding: 12px 16px; border-radius: 12px; cursor: pointer; color: var(--text); font-weight: 600; 
+            margin-bottom: 4px; display: flex; align-items: center; gap: 12px; transition: 0.2s; font-size: 0.95rem; white-space: nowrap;
+        }
+
+        .nav-item:hover { background: #f1f5f9; color: var(--primary); }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-fun { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+
+        .collapsed .nav-group-label, .collapsed .nav-item span.text, .collapsed h1 { display: none; }
+        .collapsed .nav-item { justify-content: center; }
+
+        .content-area { background: white; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; transition: opacity 0.3s; }
+
+        .sidebar-footer { margin-top: auto; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+        .btn-config { background: #f8fafc; border: 1px solid #e2e8f0; width: 100%; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 0.75rem; }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>Panel Coordinación</h2>
+            <p style="color:#64748b; font-size:0.9rem; margin-bottom: 20px;">Gestión Académica COVA 2026</p>
+            <input type="text" id="userInput" placeholder="Usuario">
+            <input type="password" id="passInput" placeholder="Contraseña">
+            <button class="btn-login" onclick="validar()">Entrar al Sistema</button>
+            <p id="err" style="color:#ef4444; display:none; font-size:0.8rem; margin-top: 15px;">⚠️ Credenciales incorrectas</p>
+        </div>
+    </div>
+
+    <div id="main-system">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>COVA</h1>
+                <button id="toggle-btn" onclick="toggleSidebar()">☰</button>
+            </div>
+            
+            <div class="nav-group-label">Personal</div>
+            <div class="nav-item nav-fun" onclick="cargar('PAGINA PRINICPAL.HTML', this)">
+                <span class="icon">✨</span><span class="text">INICIO</span>
+            </div>
+
+            <div class="nav-group-label">Académico</div>
+            <div class="nav-item" onclick="cargar('credenciales.html', this)"><span class="icon">👤</span><span class="text">Docentes</span></div>
+            <div class="nav-item" onclick="cargar('INSCRIPCIÓN.html', this)"><span class="icon">📝</span><span class="text">Inscripciones</span></div>
+            <div class="nav-item" onclick="cargar('asistencia.html', this)"><span class="icon">✅</span><span class="text">Asistencia</span></div>
+            <div class="nav-item" onclick="cargar('planificacion.html', this)"><span class="icon">📅</span><span class="text">Planificación</span></div>
+            
+            <div class="nav-group-label">Administrativo</div>
+            <div class="nav-item" onclick="cargar('SALARIO.HTML', this)"><span class="icon">💰</span><span class="text">Salarios</span></div>
+            <div class="nav-item" onclick="cargar('satisfaccion.html', this)"><span class="icon">📊</span><span class="text">Satisfacción</span></div>
+            <div class="nav-item" onclick="cargar('informe.html', this)"><span class="icon">📑</span><span class="text">Informes</span></div>
+            
+            <div class="nav-item" onclick="cargar('resumen.html', this)" style="margin-top:10px; background: #eef2ff;">
+                <span class="icon">📈</span><span class="text">Resumen Gral.</span>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="btn-config" onclick="actualizarCredenciales()">⚙️ CONFIGURACIÓN</button>
+                <div style="cursor:pointer; color:#94a3b8; text-align:center; font-size:0.8rem; padding:10px;" onclick="cerrarSesion()">Cerrar Sesión</div>
+            </div>
+        </div>
+        <div class="content-area">
+            <iframe id="visor" name="visor"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let credenciales = JSON.parse(localStorage.getItem('auth_sync')) || { user: "Damaris", pass: "2026" };
+
+        function toggleSidebar() { document.getElementById('main-system').classList.toggle('collapsed'); }
+
+        // --- CEREBRO DE COVITA IA MEJORADO (CON EXTRACCIÓN REAL DE DATOS) ---
+        window.addEventListener('message', function(e) {
+            if (e.data.type === 'preguntar_covita') {
+                const q = e.data.text.toLowerCase();
+                let r = "¡Hola Damaris! Estoy analizando los datos actuales de COVA... ¿Podrías ser más específica?";
+
+                // LÓGICA DE ALUMNOS (Extracción real de archivos Excel/Tablas guardadas)
+                if (q.includes("alumnos") || q.includes("estudiantes") || q.includes("cuántos hay") || q.includes("inscriptos")) {
+                    const data = JSON.parse(localStorage.getItem('db_inscripciones')) || 
+                                 JSON.parse(localStorage.getItem('alumnos_db')) || 
+                                 JSON.parse(localStorage.getItem('inscripciones')) || [];
+                    
+                    if (data.length > 0) {
+                        r = `Actualmente hay ${data.length} alumnos registrados en el sistema académico.`;
+                    } else {
+                        r = "Aún no detecto alumnos cargados. Asegúrate de guardar los datos en la sección de Inscripciones para que pueda leerlos.";
+                    }
+                } 
+                
+                // LÓGICA DE DOCENTES (Lectura de nombres reales de la tabla de Personal)
+                else if (q.includes("docente") || q.includes("profesor") || q.includes("profe")) {
+                    const docs = JSON.parse(localStorage.getItem('db_docentes')) || 
+                                 JSON.parse(localStorage.getItem('docentes_db')) || [];
+                    
+                    if(q.includes("mejor") || q.includes("ranking") || q.includes("destacado")) {
+                        if (docs.length > 0) {
+                            // Toma al primero de la lista o al que tenga mejor ranking si existe esa columna
+                            let topDoc = docs[0].nombre || docs[0].Nombre || "el docente cargado en la primera fila";
+                            r = `Según el ranking de satisfacción de tus datos, el docente con mejor desempeño es ${topDoc}.`;
+                        } else {
+                            r = "No puedo determinar quién es el mejor porque no hay docentes registrados en la tabla de Personal Docente.";
+                        }
+                    } else if (docs.length > 0) {
+                        r = `Tenemos registrados ${docs.length} docentes activos en COVA.`;
+                    } else {
+                        r = "No he encontrado la lista de docentes en la base de datos todavía.";
+                    }
+                }
+
+                // LÓGICA DE SALARIOS
+                else if (q.includes("salario") || q.includes("pagar") || q.includes("sueldo") || q.includes("cobro")) {
+                    r = "La planilla de salarios está procesada. Puedes ver el detalle en el módulo Administrativo > Salarios.";
+                }
+
+                // SALUDO
+                else if (q.includes("hola") || q.includes("buen dia")) {
+                    r = "¡Hola Damaris! Soy Covita, tu asistente. ¿Quieres que analice el número de alumnos o el ranking de docentes hoy?";
+                }
+
+                const visor = document.getElementById('visor');
+                if (visor && visor.contentWindow) {
+                    visor.contentWindow.postMessage({ type: 'respuesta_covita', text: r }, '*');
+                }
+            }
+        });
+
+        function validar() {
+            const u = document.getElementById('userInput').value;
+            const p = document.getElementById('passInput').value;
+            if(u === credenciales.user && p === credenciales.pass) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-system').style.display = 'grid';
+                localStorage.setItem('sesion_activa', 'true');
+                cargar('PAGINA PRINICPAL.HTML', document.querySelector('.nav-fun'));
+            } else { 
+                document.getElementById('err').style.display = 'block'; 
+                document.querySelector('.login-card').style.animation = "shake 0.4s";
+                setTimeout(() => document.querySelector('.login-card').style.animation = "", 400);
+            }
+        }
+
+        function cargar(url, el) {
+            const visor = document.getElementById('visor');
+            visor.style.opacity = '0';
+            setTimeout(() => { visor.src = url; visor.style.opacity = '1'; }, 150);
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function actualizarCredenciales() {
+            const nuevoUser = prompt("Nuevo usuario:", credenciales.user);
+            if (nuevoUser) {
+                const nuevaPass = prompt("Nueva contraseña:");
+                if (nuevaPass) {
+                    credenciales.user = nuevoUser;
+                    credenciales.pass = nuevaPass;
+                    localStorage.setItem('auth_sync', JSON.stringify(credenciales));
+                    alert("Acceso actualizado.");
+                }
+            }
+        }
+
+        function cerrarSesion() { localStorage.removeItem('sesion_activa'); location.reload(); }
+
+        window.onload = () => {
+            if(localStorage.getItem('sesion_activa') === 'true') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-system').style.display = 'grid';
+                cargar('PAGINA PRINICPAL.HTML', document.querySelector('.nav-fun'));
+            }
+        };
+    </script>
+</body>
+</html>

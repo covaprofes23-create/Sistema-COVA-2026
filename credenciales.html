@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVA | Gestión de Credenciales y Registros</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cova-teal: #004d4d;
+            --cova-gold: #c5a059;
+            --cova-light-gold: #e2c285;
+            --text-dark: #111827;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #a0b9bf 0%, #4a5d63 100%);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .main-wrapper {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* --- COLUMNA IZQUIERDA --- */
+        .left-column {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .admin-panel, .records-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .admin-panel h2, .records-panel h2 { 
+            color: var(--cova-teal); 
+            font-weight: 800; 
+            margin-top: 0;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        .field { margin-bottom: 15px; }
+        .field-row { display: flex; gap: 10px; }
+        .field-row .field { flex: 1; }
+        
+        label { display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; color: #666; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 0.85rem; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-generate { flex: 2; padding: 15px; background: var(--cova-teal); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .btn-clear { flex: 1; padding: 15px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+
+        /* --- TABLA --- */
+        .records-table-container { overflow-x: auto; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { text-align: left; padding: 12px; background: #f8fafc; color: var(--cova-teal); border-bottom: 2px solid #eee; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .btn-icon { padding: 5px 8px; border-radius: 5px; border: none; cursor: pointer; margin-right: 5px; color: white; }
+        .btn-view { background: var(--cova-teal); }
+        .btn-delete { background: #e11d48; }
+
+        /* --- COLUMNA DERECHA (CREDENCIAL) --- */
+        .right-column { flex: 1; position: sticky; top: 40px; }
+
+        .credential-card {
+            width: 100%; max-width: 400px; background: white !important; border-radius: 25px; 
+            overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position: relative;
+            print-color-adjust: exact; -webkit-print-color-adjust: exact;
+        }
+
+        .card-header { height: 100px; background: linear-gradient(to bottom, #d1dadd 0%, #ffffff 100%) !important; position: relative; }
+        .badge-top { position: absolute; top: 20px; left: 20px; background: #e5e7eb !important; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; color: #374151 !important; text-transform: uppercase; }
+
+        .photo-container {
+            width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--cova-gold) !important;
+            position: absolute; top: 40px; right: 40px; background: #eee !important; overflow: hidden; z-index: 2;
+        }
+        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        .card-body { padding: 60px 30px 20px; text-align: left; }
+        .docent-name { font-size: 1.8rem; font-weight: 800; color: var(--text-dark); margin: 0; line-height: 1.1; }
+        .docent-area { color: #00818a !important; font-weight: 600; font-size: 1rem; margin: 10px 0 20px; }
+
+        .qr-side { position: absolute; top: 225px; right: 30px; text-align: center; }
+        .qr-side img { width: 75px; height: 75px; border: 1px solid #ddd; padding: 5px; border-radius: 8px; background: white !important;}
+        .qr-side span { display: block; background: var(--cova-gold) !important; color: white !important; font-size: 0.55rem; font-weight: 700; padding: 4px 0; margin-top: -5px; border-radius: 0 0 5px 5px; }
+
+        .specialist-box { background: var(--cova-light-gold) !important; padding: 20px; border-radius: 12px; color: white !important; margin-bottom: 20px; }
+        .card-footer { text-align: center; padding-bottom: 20px; }
+        .verification-bar { background: #e5e7eb !important; padding: 10px; font-size: 0.65rem; font-weight: 700; color: #4b5563 !important; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+        /* --- PERFIL VERIFICACIÓN --- */
+        #perfil-verificacion { 
+            display: none; width: 100%; max-width: 500px; background: white; 
+            border-radius: 35px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; background: #f9f9f9; padding: 20px; border-radius: 15px; }
+        .info-label { font-weight: 700; color: var(--cova-teal); text-transform: uppercase; font-size: 0.65rem; display: block; }
+
+        /* --- REGLAS EXCLUSIVAS PARA PDF --- */
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+            body {
+                background: white !important;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .left-column, .action-btns, #perfil-verificacion {
+                display: none !important;
+            }
+            .main-wrapper {
+                display: block;
+                width: 100%;
+            }
+            .right-column {
+                position: static;
+                display: flex;
+                justify-content: center;
+                padding-top: 50px;
+            }
+            .credential-card {
+                box-shadow: none !important;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper" id="master-container">
+    
+    <div class="left-column" id="admin-view">
+        <div class="admin-panel">
+            <h2>Editor de Credencial</h2>
+            <div class="field">
+                <label>Foto Profesional</label>
+                <input type="file" id="in-foto" accept="image/*" onchange="previewPhoto(event)">
+            </div>
+            <div class="field"><label>Nombre y Apellido</label><input type="text" id="in-nombre"></div>
+            <div class="field-row">
+                <div class="field"><label>Teléfono</label><input type="text" id="in-telefono"></div>
+                <div class="field"><label>Ciudad</label><input type="text" id="in-ciudad"></div>
+            </div>
+            <div class="field-row">
+                <div class="field"><label>Correo</label><input type="email" id="in-email-docente"></div>
+                <div class="field"><label>Cumpleaños</label><input type="date" id="in-cumple"></div>
+            </div>
+            <div class="field-row">
+                <div class="field"><label>Ingreso</label><input type="date" id="in-ingreso"></div>
+                <div class="field">
+                    <label>Contrato</label>
+                    <select id="in-tipo"><option value="FIJO">FIJO</option><option value="PARCIAL">PARCIAL</option></select>
+                </div>
+            </div>
+            <div class="field"><label>Cargo</label><input type="text" id="in-area"></div>
+            <div class="field"><label>Especialista en</label><textarea id="in-especialidad" rows="2"></textarea></div>
+            
+            <div class="btn-group">
+                <button class="btn-generate" onclick="saveAndProcess()">GUARDAR REGISTRO</button>
+                <button class="btn-clear" onclick="clearInputs()">LIMPIAR</button>
+            </div>
+        </div>
+
+        <div class="records-panel">
+            <h2>Docentes Registrados</h2>
+            <div class="records-table-container">
+                <table id="docentesTable">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cargo</th>
+                            <th>Ingreso</th>
+                            <th>Contrato</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-column" id="credential-display">
+        <div class="credential-card">
+            <div class="card-header">
+                <span class="badge-top">PLANTEL DE COVA</span>
+                <div class="photo-container"><img id="out-foto" src=""></div>
+            </div>
+            <div class="card-body">
+                <h1 class="docent-name" id="out-nombre">Nombre</h1>
+                <p class="docent-area" id="out-area">Cargo</p>
+                <div class="qr-side"><img id="out-qr" src=""><span>VERIFICAR</span></div>
+                <div class="specialist-box">
+                    <p id="out-especialidad" style="font-size:0.75rem; color:white; margin:0;">Descripción...</p>
+                </div>
+            </div>
+            <div class="card-footer">
+                <h3 style="margin:0; font-size:1rem;">Instituto de Aprendizaje</h3>
+                <div class="verification-bar">SISTEMA COVA</div>
+            </div>
+        </div>
+        <div class="action-btns" style="display:flex; gap:10px; margin-top:20px;">
+            <button onclick="window.print()" style="flex:1; padding:12px; background:#111827; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer;">PDF</button>
+            <button onclick="toggleView('verificacion')" style="flex:1; padding:12px; background:var(--cova-gold); color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer;">WEB</button>
+        </div>
+    </div>
+
+    <div id="perfil-verificacion">
+        <div style="height:150px; background:var(--cova-teal); position:relative;">
+            <div style="width:140px; height:140px; border-radius:50%; border:8px solid white; position:absolute; bottom:-70px; left:40px; background:#eee; overflow:hidden;">
+                <img id="v-foto" style="width:100%; height:100%; object-fit:cover;">
+            </div>
+        </div>
+        <div style="padding:90px 40px 40px;">
+            <span style="background:#e0f4f5; color:var(--cova-teal); padding:6px 14px; border-radius:20px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">Personal de equipo autorizado por COVA</span>
+            <h2 id="v-nombre" style="margin:10px 0 5px;">Nombre</h2>
+            <span id="v-area" style="color:var(--cova-teal); font-weight:600;">Cargo</span>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Teléfono</span><span id="v-telefono">-</span></div>
+                <div class="info-item"><span class="info-label">Ciudad</span><span id="v-ciudad">-</span></div>
+                <div class="info-item"><span class="info-label">Cumpleaños</span><span id="v-cumple">-</span></div>
+                <div class="info-item"><span class="info-label">Contrato</span><span id="v-tipo">-</span></div>
+            </div>
+            <button onclick="toggleView('editor')" style="width:100%; padding:15px; background:#111827; color:white; border:none; border-radius:12px; font-weight:700; margin-top:30px; cursor:pointer;">Regresar</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let globalPhoto = "";
+    let docenteData = JSON.parse(localStorage.getItem('docentes')) || [];
+
+    window.onload = updateTable;
+
+    function previewPhoto(event) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            globalPhoto = reader.result;
+            document.getElementById('out-foto').src = globalPhoto;
+            document.getElementById('v-foto').src = globalPhoto;
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function clearInputs() {
+        document.getElementById('in-nombre').value = "";
+        document.getElementById('in-area').value = "";
+        document.getElementById('in-especialidad').value = "";
+        document.getElementById('in-telefono').value = "";
+        document.getElementById('in-ciudad').value = "";
+        document.getElementById('in-email-docente').value = "";
+        document.getElementById('in-cumple').value = "";
+        document.getElementById('in-ingreso').value = "";
+        document.getElementById('in-tipo').value = "FIJO";
+        document.getElementById('in-foto').value = "";
+        globalPhoto = "";
+        document.getElementById('out-foto').src = "";
+    }
+
+    function saveAndProcess() {
+        const docente = {
+            id: Date.now(),
+            nombre: document.getElementById('in-nombre').value,
+            area: document.getElementById('in-area').value,
+            especialidad: document.getElementById('in-especialidad').value,
+            telefono: document.getElementById('in-telefono').value,
+            ciudad: document.getElementById('in-ciudad').value,
+            email: document.getElementById('in-email-docente').value,
+            cumple: document.getElementById('in-cumple').value,
+            ingreso: document.getElementById('in-ingreso').value,
+            tipo: document.getElementById('in-tipo').value,
+            foto: globalPhoto
+        };
+
+        if(!docente.nombre) return alert("Ingresa el nombre.");
+
+        docenteData.push(docente);
+        localStorage.setItem('docentes', JSON.stringify(docenteData));
+        
+        displayDocente(docente);
+        updateTable();
+        alert("¡Registro guardado!");
+        clearInputs();
+    }
+
+    function displayDocente(d) {
+        document.getElementById('out-nombre').innerText = d.nombre;
+        document.getElementById('out-area').innerText = d.area;
+        document.getElementById('out-especialidad').innerText = d.especialidad;
+        document.getElementById('out-foto').src = d.foto || "";
+
+        document.getElementById('v-nombre').innerText = d.nombre;
+        document.getElementById('v-area').innerText = d.area;
+        document.getElementById('v-telefono').innerText = d.telefono || "-";
+        document.getElementById('v-ciudad').innerText = d.ciudad || "-";
+        document.getElementById('v-cumple').innerText = d.cumple || "-";
+        document.getElementById('v-tipo').innerText = d.tipo;
+        document.getElementById('v-foto').src = d.foto || "";
+
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFICADO_COVA_${encodeURIComponent(d.nombre)}&color=004d4d`;
+        document.getElementById('out-qr').src = qrUrl;
+    }
+
+    function updateTable() {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = "";
+        docenteData.forEach((d) => {
+            const row = `<tr>
+                <td>${d.nombre}</td>
+                <td>${d.area}</td>
+                <td>${d.ingreso}</td>
+                <td>${d.tipo}</td>
+                <td>
+                    <button class="btn-icon btn-view" onclick="loadDocente(${d.id})">👁</button>
+                    <button class="btn-icon btn-delete" onclick="deleteDocente(${d.id})">🗑</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function loadDocente(id) {
+        const d = docenteData.find(x => x.id === id);
+        if(d) displayDocente(d);
+    }
+
+    function deleteDocente(id) {
+        if(confirm("¿Eliminar registro?")) {
+            docenteData = docenteData.filter(x => x.id !== id);
+            localStorage.setItem('docentes', JSON.stringify(docenteData));
+            updateTable();
+        }
+    }
+
+    function toggleView(view) {
+        if(view === 'verificacion') {
+            document.getElementById('admin-view').style.display = 'none';
+            document.getElementById('credential-display').style.display = 'none';
+            document.getElementById('perfil-verificacion').style.display = 'block';
+            document.body.style.background = "#fff";
+        } else {
+            document.getElementById('admin-view').style.display = 'flex';
+            document.getElementById('credential-display').style.display = 'block';
+            document.getElementById('perfil-verificacion').style.display = 'none';
+            document.body.style.background = "linear-gradient(135deg, #a0b9bf 0%, #4a5d63 100%)";
+        }
+    }
+</script>
+
+</body>
+</html>

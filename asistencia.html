@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVA | Asistencia Sincronizada</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --secondary: #1e293b; --bg: #f3f4f6; 
+            --card: #ffffff; --text: #1f2937; --text-light: #6b7280;
+            --radius: 16px; --accent: #10b981; --pdf: #ef4444; --excel: #16a34a;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; min-height: 100vh; }
+        
+        .sidebar { 
+            width: 280px; background: var(--secondary); color: white; 
+            padding: 2rem 1.2rem; position: fixed; height: 100vh; 
+            z-index: 100; display: flex; flex-direction: column; gap: 25px;
+            box-sizing: border-box;
+        }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 10px; }
+
+        .mini-calendar {
+            background: rgba(255, 255, 255, 0.05); border-radius: 12px; overflow: hidden;
+            text-align: center; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .cal-head { background: var(--pdf); color: white; padding: 4px; font-size: 0.65rem; font-weight: 800; }
+        .cal-body { padding: 10px 0; }
+        .cal-day-num { display: block; font-size: 2rem; font-weight: 800; color: white; line-height: 1; }
+        .cal-day-name { font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+
+        .sidebar-notes {
+            background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.1); flex-grow: 1; display: flex; flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-notes h5 { margin: 0 0 10px 0; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
+
+        .medicion-tag {
+            background: rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; margin-bottom: 8px;
+            border-left: 3px solid var(--accent);
+        }
+        .medicion-tag span { display: block; }
+        .m-name { font-size: 0.7rem; font-weight: 700; color: #e2e8f0; }
+        .m-val { font-size: 1rem; font-weight: 800; color: var(--accent); }
+
+        .main { margin-left: 280px; flex: 1; padding: 2rem 3rem; width: calc(100% - 280px); }
+
+        .ia-notice {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white; padding: 1.5rem; border-radius: var(--radius);
+            margin-bottom: 2rem; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3);
+            display: flex; align-items: center; gap: 20px;
+        }
+        .ia-icon { font-size: 2rem; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 50%; }
+
+        .toolbar { 
+            background: var(--card); padding: 1rem 1.5rem; border-radius: var(--radius); 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem;
+            display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; align-items: center;
+        }
+        .filter-input { padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 8px; font-family: inherit; font-size: 0.85rem; }
+        
+        .upload-card {
+            background: var(--card); border: 2px solid #e2e8f0; border-radius: var(--radius);
+            padding: 2rem; text-align: center; transition: 0.3s; cursor: pointer;
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+            align-items: center; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem;
+        }
+        .upload-card.loaded { border-color: var(--accent); background: #f0fdf4; }
+        .upload-card input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .btn-fake { background: #f1f5f9; color: var(--secondary); padding: 8px 16px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
+
+        .course-card { background: var(--card); border-radius: var(--radius); border: 1px solid #e5e7eb; margin-bottom: 1rem; overflow: hidden; }
+        .course-trigger { padding: 1.2rem 2rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; transition: background 0.2s; }
+        .course-trigger:hover { background: #f8fafc; }
+        
+        .course-content { display: none; }
+        .course-card.expanded .course-content { display: block; }
+        .arrow-icon { transition: transform 0.3s; font-size: 0.8rem; color: var(--text-light); }
+        .expanded .arrow-icon { transform: rotate(180deg); }
+
+        .btn-icon { border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
+
+        .config-drawer { padding: 2rem; background: #f8fafc; display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; }
+        .config-group { display: flex; gap: 20px; flex-grow: 1; }
+        .config-item { display: flex; flex-direction: column; gap: 6px; }
+        .config-item label { font-size: 0.65rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; }
+        .input-ui { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-family: inherit; font-size: 0.9rem; background: white; }
+
+        .day-picker { display: flex; gap: 8px; }
+        .day-toggle { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: white; border-radius: 10px; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+        .day-toggle.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .btn-activate { background: var(--secondary); color: white; border: none; padding: 14px 28px; border-radius: 12px; font-weight: 800; font-size: 0.85rem; cursor: pointer; transition: 0.3s; }
+
+        .stats-strip { padding: 1rem 2rem; background: #f0f9ff; display: flex; gap: 2rem; font-size: 0.85rem; font-weight: 700; color: #0369a1; }
+        
+        .table-container { overflow-x: auto; width: 100%; border-top: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; table-layout: auto; }
+        th { background: #f9fafb; padding: 1rem; font-size: 0.7rem; font-weight: 800; color: var(--text-light); border-bottom: 1px solid #eee; text-transform: uppercase; text-align: center; }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid #f3f4f6; text-align: center; font-size: 0.85rem; }
+
+        .sticky-name { position: sticky; left: 0; background: white; z-index: 10; text-align: left; min-width: 280px; font-weight: 700; border-right: 1px solid #eee; white-space: normal; }
+        .sticky-ci { position: sticky; left: 280px; background: white; z-index: 9; min-width: 100px; border-right: 1px solid #eee; }
+
+        .month-container { margin-bottom: 30px; }
+
+        @media print {
+            .sidebar, .no-print, .toolbar, .upload-card, .ia-notice, .config-drawer { display: none !important; }
+            .course-content { display: block !important; }
+            .main { margin-left: 0; padding: 0; width: 100%; }
+            .course-card { break-inside: avoid; border: 1px solid #000; margin-bottom: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar no-print">
+        <div class="logo">⚡ COVA</div>
+        <div class="mini-calendar">
+            <div class="cal-head" id="calMonth">...</div>
+            <div class="cal-body">
+                <span class="cal-day-num" id="calDayNum">00</span>
+                <span class="cal-day-name" id="calDayName">...</span>
+            </div>
+        </div>
+        <div class="sidebar-notes">
+            <h5>⭐ Medición Docente</h5>
+            <div id="medicionOutput">
+                <p style="font-size: 0.65rem; color: #94a3b8; text-align: center;">Sube el Excel para ver promedios.</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="ia-notice no-print" id="iaNotice">
+            <div class="ia-icon">🤖</div>
+            <div class="ia-content">
+                <h5>Cerebro Sincronizado COVA</h5>
+                <p id="iaText">Sincronizando todos los grupos...</p>
+            </div>
+        </div>
+
+        <div class="toolbar no-print">
+            <input type="text" id="filterCurso" class="filter-input" placeholder="🔍 Buscar curso o docente..." onkeyup="aplicarFiltros()">
+            <select id="filterMes" class="filter-input" onchange="aplicarFiltros()">
+                <option value="">Todos los Meses</option>
+            </select>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-icon btn-pdf" onclick="window.print()">📄 Imprimir</button>
+                <button class="btn-icon" style="background: #e2e8f0; color:#475569;" onclick="clearAllData()">🧹 Limpiar</button>
+            </div>
+        </div>
+
+        <div class="upload-card no-print" id="cardAsistencia">
+            <span>📋</span>
+            <h4>Subir Excel de Marcaciones</h4>
+            <span class="btn-fake">Seleccionar Archivo</span>
+            <input type="file" id="xlAsistencia" accept=".xlsx, .xls" onchange="processMarcaciones(this)">
+        </div>
+
+        <div id="container"></div>
+    </main>
+
+<script>
+    let dbMarcaciones = [];
+    let appState = [];
+    let mesesUnicos = new Set();
+    const DOCENTES_MASTER = ["DAMARIS CRISTALDO", "ANGEL ORTEGA", "ROLANDO AGUILAR"];
+
+    function clean(t) {
+        return String(t || "").toUpperCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function sincronizarDesdeInscripciones() {
+        const dbCompartida = JSON.parse(localStorage.getItem('academySync_DB') || '{}');
+        const asistenciaLocal = JSON.parse(localStorage.getItem('academySyncState_Asistencia') || '[]');
+        dbMarcaciones = JSON.parse(localStorage.getItem('academySync_Marcaciones') || '[]');
+        
+        document.getElementById('container').innerHTML = '';
+        appState = [];
+        mesesUnicos.clear();
+
+        Object.keys(dbCompartida).forEach(mes => {
+            const cursosDelMes = dbCompartida[mes];
+            Object.keys(cursosDelMes).forEach(nombreCurso => {
+                const info = cursosDelMes[nombreCurso];
+                const idGenerado = `${mes}-${nombreCurso}`.trim().replace(/[^a-zA-Z0-9]/g, '_');
+                const local = asistenciaLocal.find(p => p.id === idGenerado);
+                const cursoObjeto = {
+                    id: idGenerado, mes: mes.toUpperCase().trim(), cName: nombreCurso.trim(),
+                    docente: info.docente || 'Sin Docente', horario: info.horario || 'Sin Horario',
+                    isActivated: local ? local.isActivated : false,
+                    config: local ? local.config : { date: '', num: 8, days: [] },
+                    alumnos: info.alumnos || [], asistencia: local ? local.asistencia : {}
+                };
+                appState.push(cursoObjeto);
+                render(cursoObjeto);
+                if(cursoObjeto.isActivated) { activate(cursoObjeto.id, true); recomponerChecks(cursoObjeto); }
+            });
+        });
+        actualizarSelectores();
+        actualizarMedicion();
+    }
+
+    function render(curso) {
+        mesesUnicos.add(curso.mes);
+        let mesSec = document.getElementById(`m-${curso.mes}`);
+        if (!mesSec) {
+            mesSec = document.createElement('div');
+            mesSec.id = `m-${curso.mes}`;
+            mesSec.className = 'month-container';
+            mesSec.innerHTML = `<div class="month-header" style="background:var(--secondary); color:white; padding:10px 20px; font-weight:800; border-radius:10px; margin:20px 0 10px 0">${curso.mes}</div><div class="m-body"></div>`;
+            document.getElementById('container').appendChild(mesSec);
+        }
+        const card = document.createElement('div');
+        card.className = 'course-card';
+        card.id = `card-${curso.id}`;
+        card.setAttribute('data-curso', `${curso.cName} ${curso.docente}`.toLowerCase());
+        card.setAttribute('data-mes', curso.mes);
+        card.innerHTML = `
+            <div class="course-trigger" onclick="toggleExpand('${curso.id}')">
+                <div class="course-title">
+                    <h4>${curso.cName}</h4>
+                    <div style="font-size:0.75rem; color:var(--text-light)">👨‍🏫 ${curso.docente} | ⏰ ${curso.horario}</div>
+                </div>
+                <div style="display:flex; gap:10px">
+                    <button class="btn-icon" style="color:var(--excel)" onclick="exportarExcel('${curso.id}', event)">📊 Excel</button>
+                    <button class="btn-icon" onclick="edit('${curso.id}', event)">✏️ Config</button>
+                    <span class="arrow-icon">▼</span>
+                </div>
+            </div>
+            <div id="${curso.id}-content" class="course-content">
+                <div id="${curso.id}-setup" class="config-drawer no-print" style="display: ${curso.isActivated ? 'none' : 'flex'}">
+                    <div class="config-group">
+                        <div class="config-item"><label>Inicio</label><input type="date" id="${curso.id}-date" class="input-ui" value="${curso.config.date}"></div>
+                        <div class="config-item"><label>Clases</label><input type="number" id="${curso.id}-num" class="input-ui" style="width:70px" value="${curso.config.num}"></div>
+                        <div class="config-item"><label>Días</label>
+                            <div class="day-picker">
+                                ${[1,2,3,4,5,6].map(d => `<div class="day-toggle ${curso.config.days.includes(d)?'selected':''}" onclick="toggleDia('${curso.id}', ${d}, this)" data-d="${d}">${['','L','M','M','J','V','S'][d]}</div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-activate" onclick="activate('${curso.id}')">🚀 Generar Tabla</button>
+                </div>
+                <div class="stats-strip" id="${curso.id}-stats" style="display: ${curso.isActivated ? 'flex' : 'none'}">
+                    <span>INSCRIPTOS: ${curso.alumnos.length}</span>
+                    <span>ALUMNOS QUE MARCARON: <span id="${curso.id}-p">0</span> / ${curso.alumnos.length}</span>
+                </div>
+                <div class="table-container" id="${curso.id}-tbl"></div>
+            </div>`;
+        mesSec.querySelector('.m-body').appendChild(card);
+    }
+
+    async function processMarcaciones(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, {type: 'array', cellDates: true});
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        
+        if (rows.length === 0) return;
+
+        const keys = Object.keys(rows[0] || {});
+        const keyEval = keys.find(k => {
+            const nk = clean(k);
+            return nk.includes("CALIFICACION") || nk.includes("EVALUARIAS");
+        }) || "";
+
+        dbMarcaciones = rows.map(r => {
+            let fFormateada = "";
+            const raw = r["Marca temporal"];
+            if (raw instanceof Date) {
+                fFormateada = raw.toLocaleDateString('es-PY', {day:'2-digit', month:'2-digit'});
+            } else if(typeof raw === 'string') {
+                const partes = raw.split(/[\/\-\s]/);
+                if(partes.length >= 2) fFormateada = `${partes[0].padStart(2,'0')}/${partes[1].padStart(2,'0')}`;
+            }
+
+            return {
+                fecha: fFormateada,
+                ci: String(r["Código de Alumno (Cédula de Identidad) (Sin puntos ni espacios)"] || "").trim(),
+                mes: clean(r["MES"]),
+                docente: clean(r["Docente"]),
+                puntaje: parseFloat(r[keyEval]) || 0
+            };
+        });
+
+        localStorage.setItem('academySync_Marcaciones', JSON.stringify(dbMarcaciones));
+        document.getElementById('cardAsistencia').classList.add('loaded');
+        appState.forEach(c => { if(c.isActivated) cruceIndividual(c.id); });
+        actualizarMedicion();
+    }
+
+    function cruceIndividual(id) {
+        const card = document.getElementById(`card-${id}`);
+        const curso = appState.find(c => c.id === id);
+        if(!card || !curso) return;
+
+        card.querySelectorAll('tbody tr').forEach(fila => {
+            const ci = fila.getAttribute('data-ci');
+            fila.querySelectorAll('.check-asistencia').forEach(check => {
+                const fCol = check.getAttribute('data-fecha');
+                const existe = dbMarcaciones.some(m => 
+                    m.ci === ci && 
+                    m.fecha === fCol && 
+                    m.mes.includes(curso.mes)
+                );
+                if (existe) check.checked = true;
+            });
+        });
+        upd(id);
+    }
+
+    function activate(id, isRebuild = false) {
+        const curso = appState.find(c => c.id === id);
+        if (!curso) return;
+        const dVal = isRebuild ? curso.config.date : (document.getElementById(`${id}-date`)?.value || '');
+        const num = isRebuild ? curso.config.num : (parseInt(document.getElementById(`${id}-num`)?.value) || 0);
+        const days = isRebuild ? curso.config.days : Array.from(document.querySelectorAll(`#card-${id} .day-toggle.selected`)).map(o => parseInt(o.dataset.d));
+        
+        if (!isRebuild && (!dVal || !days.length)) return alert("Faltan datos");
+        
+        curso.config = { date: dVal, num: num, days: days };
+        curso.isActivated = true;
+        let dates = [];
+        let curr = new Date(dVal);
+        curr.setHours(12,0,0,0);
+        while(dates.length < num) {
+            if(days.includes(curr.getDay())) dates.push(curr.toLocaleDateString('es-PY', {day:'2-digit', month:'2-digit'}));
+            curr.setDate(curr.getDate() + 1);
+        }
+        let html = `<table><thead><tr><th class="sticky-name">Estudiante</th><th class="sticky-ci">C.I.</th>${dates.map(d => `<th style="width:65px">${d}</th>`).join('')}</tr></thead><tbody>`;
+        curso.alumnos.forEach(alum => {
+            html += `<tr data-ci="${alum.ci}"><td class="sticky-name">${alum.nombre}</td><td class="sticky-ci">${alum.ci}</td>`;
+            for(let j=0; j<num; j++) html += `<td><input type="checkbox" class="check-asistencia" data-fecha="${dates[j]}" onchange="upd('${id}')"></td>`;
+            html += `</tr>`;
+        });
+        document.getElementById(`${id}-tbl`).innerHTML = html + `</tbody></table>`;
+        document.getElementById(`${id}-stats`).style.display = 'flex';
+        document.getElementById(`${id}-setup`).style.display = 'none';
+        if(!isRebuild) { saveToStorage(); if(dbMarcaciones.length > 0) cruceIndividual(id); }
+    }
+
+    function recomponerChecks(curso) {
+        const card = document.getElementById(`card-${curso.id}`);
+        if(!card || !curso.asistencia) return;
+        for (const ci in curso.asistencia) {
+            const fila = card.querySelector(`tr[data-ci="${ci}"]`);
+            if(fila) {
+                curso.asistencia[ci].forEach(fecha => {
+                    const chk = fila.querySelector(`input[data-fecha="${fecha}"]`);
+                    if(chk) chk.checked = true;
+                });
+            }
+        }
+        upd(curso.id);
+    }
+
+    function upd(id) {
+        const curso = appState.find(c => c.id === id);
+        const card = document.getElementById(`card-${id}`);
+        if(!card || !curso) return;
+
+        // Lógica de Participantes Únicos: Contamos cuántas filas (alumnos) tienen al menos un check
+        let alumnosConMarcas = 0;
+        card.querySelectorAll('tbody tr').forEach(tr => {
+            if (tr.querySelectorAll('input:checked').length > 0) {
+                alumnosConMarcas++;
+            }
+        });
+
+        // Actualizamos la interfaz
+        document.getElementById(`${id}-p`).innerText = alumnosConMarcas;
+
+        // Guardamos el estado de asistencia
+        curso.asistencia = {};
+        card.querySelectorAll('tbody tr').forEach(tr => {
+            const ci = tr.getAttribute('data-ci');
+            const checks = Array.from(tr.querySelectorAll('input:checked')).map(i => i.getAttribute('data-fecha'));
+            if(checks.length > 0) curso.asistencia[ci] = checks;
+        });
+        saveToStorage();
+    }
+
+    function actualizarMedicion() {
+        const panel = document.getElementById('medicionOutput');
+        const mesFiltro = document.getElementById('filterMes').value;
+        const mesCalendario = document.getElementById('calMonth').innerText;
+        const mesBusqueda = clean(mesFiltro || mesCalendario);
+        if (!dbMarcaciones || dbMarcaciones.length === 0) return;
+        const dataMes = dbMarcaciones.filter(m => m.mes === mesBusqueda && m.puntaje > 0);
+        if (dataMes.length === 0) {
+            panel.innerHTML = `<p style="font-size: 0.65rem; color: #94a3b8; text-align: center; margin-top: 20px;">Sin evaluaciones para ${mesFiltro || mesCalendario}.</p>`;
+            return;
+        }
+        const stats = {};
+        const DOC_MASTER_CLEAN = DOCENTES_MASTER.map(d => ({original: d, nameClean: clean(d)}));
+        dataMes.forEach(m => {
+            const matchedDoc = DOC_MASTER_CLEAN.find(master => m.docente.includes(master.nameClean));
+            if (matchedDoc) {
+                if (!stats[matchedDoc.original]) stats[matchedDoc.original] = { suma: 0, cuenta: 0 };
+                stats[matchedDoc.original].suma += m.puntaje;
+                stats[matchedDoc.original].cuenta += 1;
+            }
+        });
+        let html = '';
+        DOCENTES_MASTER.forEach(doc => {
+            if (stats[doc]) {
+                const prom = (stats[doc].suma / stats[doc].cuenta).toFixed(1);
+                html += `<div class="medicion-tag"><span class="m-name">${doc}</span><span class="m-val">⭐ ${prom}</span><span style="font-size:0.55rem; color:#94a3b8">(${stats[doc].cuenta} calificaciones)</span></div>`;
+            }
+        });
+        panel.innerHTML = html || `<p style="font-size: 0.65rem; color: #94a3b8; text-align: center; margin-top: 20px;">Docentes no encontrados.</p>`;
+    }
+
+    function initSidebar() {
+        const ahora = new Date();
+        const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        document.getElementById('calMonth').innerText = meses[ahora.getMonth()];
+        document.getElementById('calDayNum').innerText = ahora.getDate();
+        document.getElementById('calDayName').innerText = ['DOMINGO','LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'][ahora.getDay()];
+        sincronizarDesdeInscripciones();
+    }
+
+    function toggleExpand(id) { document.getElementById(`card-${id}`).classList.toggle('expanded'); }
+    function toggleDia(id, d, el) { el.classList.toggle('selected'); }
+    
+    function aplicarFiltros() {
+        const b = document.getElementById('filterCurso').value.toLowerCase();
+        const m = document.getElementById('filterMes').value;
+        document.querySelectorAll('.month-container').forEach(cont => {
+            let vis = false;
+            cont.querySelectorAll('.course-card').forEach(card => {
+                const cVis = card.getAttribute('data-curso').includes(b) && (!m || card.getAttribute('data-mes') === m);
+                card.style.display = cVis ? "block" : "none";
+                if(cVis) vis = true;
+            });
+            cont.style.display = vis ? "block" : "none";
+        });
+        actualizarMedicion();
+    }
+
+    function actualizarSelectores() {
+        const sM = document.getElementById('filterMes');
+        const val = sM.value;
+        sM.innerHTML = '<option value="">Todos los Meses</option>';
+        [...mesesUnicos].sort().forEach(m => {
+            sM.innerHTML += `<option value="${m}" ${val === m ? 'selected' : ''}>${m}</option>`;
+        });
+    }
+
+    function saveToStorage() { localStorage.setItem('academySyncState_Asistencia', JSON.stringify(appState)); }
+    function edit(id, e) { e.stopPropagation(); const c = appState.find(x => x.id === id); c.isActivated = false; document.getElementById(`${id}-setup`).style.display = 'flex'; document.getElementById(`${id}-tbl`).innerHTML = ''; saveToStorage(); }
+    
+    function clearAllData() { 
+        if(confirm("¿Limpiar todo?")) { 
+            localStorage.removeItem('academySyncState_Asistencia'); 
+            localStorage.removeItem('academySync_Marcaciones'); 
+            location.reload(); 
+        } 
+    }
+    
+    function exportarExcel(id, event) {
+        event.stopPropagation();
+        const c = appState.find(x => x.id === id), table = document.querySelector(`#card-${id} table`);
+        if(!table) return;
+        const rows = [Array.from(table.querySelectorAll('th')).map(th => th.innerText)];
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const data = [tr.cells[0].innerText, tr.cells[1].innerText];
+            tr.querySelectorAll('input').forEach(i => data.push(i.checked ? "P" : "A"));
+            rows.push(data);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Planilla");
+        XLSX.writeFile(wb, `Asistencia_${c.cName}.xlsx`);
+    }
+
+    initSidebar();
+</script>
+</body>
+</html>

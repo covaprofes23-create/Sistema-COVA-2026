@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión Salarial - COVA</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; padding: 20px; margin: 0; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        
+        /* Panel de Control */
+        .no-print-area { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); height: fit-content; }
+        h2 { color: #1a3a5a; font-size: 0.85rem; border-bottom: 2px solid #d91d1d; padding-bottom: 8px; text-transform: uppercase; margin-top: 0; margin-bottom: 15px; }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; font-size: 0.75rem; margin-bottom: 4px; color: #555; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 0.9rem; }
+        
+        /* Selector de Tipo (Botones como antes) */
+        .type-selector { display: flex; gap: 5px; margin-bottom: 15px; background: #eee; padding: 5px; border-radius: 8px; }
+        .type-selector button { font-size: 0.75rem; background: transparent; color: #555; border: none; cursor: pointer; flex: 1; padding: 10px; border-radius: 5px; font-weight: bold; transition: 0.3s; }
+        .type-selector button.active { background: #1a3a5a; color: white; }
+
+        /* Botones de Acción */
+        button.main-btn { width: 100%; padding: 12px; background: #1a3a5a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        button.main-btn:hover { background: #d91d1d; }
+        .btn-extra { background: #8e44ad !important; }
+        .btn-print { background: #27ae60 !important; }
+        .btn-save { background: #f39c12 !important; margin-top: 20px; }
+
+        /* Pestañas de Vista */
+        .view-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #ddd; color: #666; }
+        .tab-btn.active { background: #1a3a5a; color: white; }
+
+        /* Documentos */
+        .document-area { background: white; padding: 50px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-height: 800px; position: relative; }
+        .header-doc { border-bottom: 3px solid #1a3a5a; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; border: 1px solid #ddd; font-size: 0.8rem; text-transform: uppercase; }
+        td { padding: 12px; border: 1px solid #eee; font-size: 0.85rem; }
+        
+        .col-audit-info { display: none; } /* Oculto en recibo docente */
+
+        .totales-container { float: right; width: 380px; margin-top: 20px; }
+        .total-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+        .total-row.final { border-top: 3px solid #1a3a5a; border-bottom: none; color: #1a3a5a; font-size: 1.4rem; font-weight: bold; margin-top: 10px; }
+
+        .firmas { margin-top: 120px; display: grid; grid-template-columns: 1fr 1fr; gap: 100px; text-align: center; font-size: 0.8rem; }
+        .linea-firma { border-top: 1px solid #333; padding-top: 8px; }
+
+        .historial-section { grid-column: span 2; background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+
+        /* Estilo para botón eliminar */
+        .btn-del { background: none; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; font-size: 1.1rem; padding: 0 5px; }
+        .btn-del:hover { color: #c0392b; }
+
+        @media print {
+            @page { size: A4; margin: 10mm; }
+            body { background: white; padding: 0; }
+            .container { display: block; }
+            .no-print-area, .view-tabs, .historial-section, .btn-save, .no-print { display: none !important; }
+            .document-area { box-shadow: none; border: none; padding: 0; width: 100%; }
+            #vistaAuditoria { display: none !important; }
+            .col-audit-info { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <aside class="no-print-area">
+        <h2>Tipo de Colaborador</h2>
+        <div class="type-selector">
+            <button id="btnFijo" class="active" onclick="setDocenteType('fijo')">Docente Fijo</button>
+            <button id="btnPart" onclick="setDocenteType('particular')">Particular</button>
+        </div>
+
+        <div id="seccionBase">
+            <label>Salario Base (Gs)</label>
+            <input type="number" id="baseInput" value="4500000" oninput="renderizar()">
+        </div>
+
+        <div class="input-group" style="margin-top:15px;">
+            <label>Nombre y Apellido</label>
+            <input type="text" id="nombreFunc" placeholder="Nombre del docente" oninput="renderizar()">
+        </div>
+
+        <div class="input-group">
+            <label>Mes de Pago</label>
+            <select id="mesSelect" onchange="renderizar()">
+                <option value="Enero">Enero</option><option value="Febrero">Febrero</option>
+                <option value="Marzo" selected>Marzo</option><option value="Abril">Abril</option>
+                <option value="Mayo">Mayo</option>
+            </select>
+        </div>
+
+        <hr>
+        <h2>Cargar Curso</h2>
+        <div class="input-group"><input type="text" id="cursoInput" placeholder="Curso/Materia"></div>
+        <div class="input-group">
+            <select id="tipoCliente" onchange="toggleEmpresaInput()">
+                <option value="Particular">Particular</option>
+                <option value="Empresa">Empresa</option>
+            </select>
+        </div>
+        <div id="divEmpresa" class="input-group hidden">
+            <input type="text" id="empresaInput" placeholder="Nombre de la Empresa">
+        </div>
+        <div class="input-group">
+            <select id="tasaInput">
+                <option value="0.30">Creado (30%)</option>
+                <option value="0.15">Impartido (15%)</option>
+            </select>
+        </div>
+        <div class="input-group"><input type="number" id="ventaInput" placeholder="Monto Vendido"></div>
+        <button class="main-btn" onclick="agregarRegistro('com')">+ Cargar Curso</button>
+
+        <hr>
+        <h2>Sección Extra</h2>
+        <div class="input-group"><input type="text" id="extraDesc" placeholder="Descripción extra"></div>
+        <div class="input-group"><input type="number" id="extraMonto" placeholder="Monto real Gs."></div>
+        <button class="main-btn btn-extra" onclick="agregarRegistro('ext')">+ Cargar Extra</button>
+
+        <button class="main-btn btn-print" onclick="window.print()">🖨️ Imprimir Recibo</button>
+        <button class="main-btn btn-save" id="btnSave" onclick="guardarHistorial()">💾 Finalizar y Guardar</button>
+        <button onclick="borrarTodoActual()" style="background:#6c757d; font-size: 0.7rem; color:white; border:none; width:100%; cursor:pointer; padding:5px; border-radius:4px; margin-top:10px;">Limpiar Recibo</button>
+    </aside>
+
+    <main>
+        <div class="view-tabs no-print-area">
+            <button class="tab-btn active" id="tabRecibo" onclick="cambiarVista('recibo')">📄 VISTA RECIBO (DOCENTE)</button>
+            <button class="tab-btn" id="tabAuditoria" onclick="cambiarVista('auditoria')">🔍 VISTA AUDITORÍA (INTERNO)</button>
+        </div>
+
+        <div id="vistaRecibo" class="document-area">
+            <div class="header-doc">
+                <div>
+                    <h1 id="tituloRecibo" style="margin:0; color:#1a3a5a; font-size: 1.6rem;">RECIBO DE SALARIO</h1>
+                    <p style="margin:5px 0 0 0;"><strong>COLABORADOR:</strong> <span id="recNombre"></span></p>
+                    <p style="margin:5px 0 0 0; font-size: 0.8rem; color:#666;"><strong>MES:</strong> <span id="recMes"></span></p>
+                </div>
+                <div style="text-align: right; font-size: 0.8rem;">
+                    <strong>COVA - Servicios Educativos</strong><br>
+                    Emisión: <span id="recFecha"></span>
+                </div>
+            </div>
+
+            <table>
+                <thead><tr><th>Concepto</th><th>Detalle</th><th style="text-align: right;">Subtotal</th><th class="no-print"></th></tr></thead>
+                <tbody id="bodyRecibo"></tbody>
+            </table>
+
+            <div class="totales-container">
+                <div class="total-row" id="rowBaseVisual"><span>Salario Base:</span><span id="resBase">0</span></div>
+                <div class="total-row"><span>Comisiones/Extras:</span><span id="resVar">0</span></div>
+                <div class="total-row final"><span>NETO A COBRAR:</span><span id="resNeto">0</span></div>
+            </div>
+            <div style="clear:both"></div>
+            <div class="firmas"><div class="linea-firma">Firma Colaborador</div><div class="linea-firma">Administración</div></div>
+        </div>
+
+        <div id="vistaAuditoria" class="document-area hidden">
+            <h1 style="color:#d91d1d; border-bottom: 2px solid #d91d1d; padding-bottom:10px;">AUDITORÍA DE CONTROL INTERNO</h1>
+            <table>
+                <thead><tr><th>Concepto</th><th>Venta Gs.</th><th>%</th><th>Ganancia Gs.</th></tr></thead>
+                <tbody id="bodyAudit"></tbody>
+            </table>
+            <div style="background:#f4f7f6; padding:20px; border-radius:8px;">
+                <strong>Resumen Técnico:</strong>
+                <p id="auditResumen"></p>
+            </div>
+        </div>
+    </main>
+
+    <section class="historial-section no-print-area">
+        <h2>📂 Historial de Liquidaciones</h2>
+        <table id="tablaHistorial">
+            <thead><tr><th>Fecha</th><th>Colaborador</th><th>Mes</th><th>Total Neto</th><th>Acción</th></tr></thead>
+            <tbody id="bodyHistorial"></tbody>
+        </table>
+    </section>
+</div>
+
+<script>
+    let actual = JSON.parse(localStorage.getItem('cova_v9_actual')) || [];
+    let historial = JSON.parse(localStorage.getItem('cova_v9_hist')) || [];
+    let tipoDocente = "fijo"; 
+    let editId = null;
+    const fmt = new Intl.NumberFormat('es-PY');
+
+    function toggleEmpresaInput() {
+        document.getElementById('divEmpresa').classList.toggle('hidden', document.getElementById('tipoCliente').value !== 'Empresa');
+    }
+
+    function setDocenteType(type) {
+        tipoDocente = type;
+        document.getElementById('btnFijo').classList.toggle('active', type === 'fijo');
+        document.getElementById('btnPart').classList.toggle('active', type === 'particular');
+        const seccionBase = document.getElementById('seccionBase');
+        const rowBaseVisual = document.getElementById('rowBaseVisual');
+        if(type === 'particular') {
+            seccionBase.style.opacity = "0.4";
+            document.getElementById('baseInput').disabled = true;
+            rowBaseVisual.style.display = "none";
+            document.getElementById('tituloRecibo').innerText = "RECIBO DE HONORARIOS";
+        } else {
+            seccionBase.style.opacity = "1";
+            document.getElementById('baseInput').disabled = false;
+            rowBaseVisual.style.display = "flex";
+            document.getElementById('tituloRecibo').innerText = "RECIBO DE SALARIO";
+        }
+        renderizar();
+    }
+
+    function cambiarVista(tipo) {
+        document.getElementById('vistaRecibo').classList.toggle('hidden', tipo !== 'recibo');
+        document.getElementById('vistaAuditoria').classList.toggle('hidden', tipo !== 'auditoria');
+        document.getElementById('tabRecibo').classList.toggle('active', tipo === 'recibo');
+        document.getElementById('tabAuditoria').classList.toggle('active', tipo === 'auditoria');
+    }
+
+    function agregarRegistro(modo) {
+        if(modo === 'com') {
+            const curso = document.getElementById('cursoInput').value || "Curso";
+            const venta = parseInt(document.getElementById('ventaInput').value) || 0;
+            const tasa = parseFloat(document.getElementById('tasaInput').value);
+            const cli = document.getElementById('tipoCliente').value === 'Empresa' ? document.getElementById('empresaInput').value : "Particular";
+            if(venta <= 0) return alert("Ingrese monto de venta");
+            actual.push({ id: Date.now(), tipo: 'com', desc: curso, detalle: cli, venta, tasa, final: Math.round(venta * tasa) });
+        } else {
+            const desc = document.getElementById('extraDesc').value || "Extra";
+            const monto = parseInt(document.getElementById('extraMonto').value) || 0;
+            if(monto <= 0) return alert("Ingrese monto");
+            actual.push({ id: Date.now(), tipo: 'ext', desc, detalle: 'Directo', venta: monto, tasa: 1, final: monto });
+        }
+        document.getElementById('cursoInput').value = "";
+        document.getElementById('ventaInput').value = "";
+        document.getElementById('extraDesc').value = "";
+        document.getElementById('extraMonto').value = "";
+        guardarYRender();
+    }
+
+    // FUNCIÓN PARA ELIMINAR CARGA ESPECÍFICA
+    function eliminarFila(id) {
+        actual = actual.filter(r => r.id !== id);
+        guardarYRender();
+    }
+
+    function renderizar() {
+        const bRecibo = document.getElementById('bodyRecibo');
+        const bAudit = document.getElementById('bodyAudit');
+        const base = tipoDocente === 'fijo' ? (parseInt(document.getElementById('baseInput').value) || 0) : 0;
+        document.getElementById('recNombre').innerText = document.getElementById('nombreFunc').value || "..................";
+        document.getElementById('recMes').innerText = document.getElementById('mesSelect').value;
+        document.getElementById('recFecha').innerText = new Date().toLocaleDateString();
+
+        bRecibo.innerHTML = ""; bAudit.innerHTML = "";
+        let sumaVar = 0; let sumaVentas = 0;
+
+        actual.forEach(r => {
+            sumaVar += r.final;
+            if(r.tipo === 'com') sumaVentas += r.venta;
+            // Agregado el botón de eliminar (X) al final de la fila del recibo
+            bRecibo.innerHTML += `<tr>
+                <td><strong>${r.desc}</strong></td>
+                <td>${r.detalle}</td>
+                <td style="text-align:right">${fmt.format(r.final)} Gs.</td>
+                <td class="no-print"><button class="btn-del" onclick="eliminarFila(${r.id})">×</button></td>
+            </tr>`;
+            bAudit.innerHTML += `<tr><td>${r.desc}</td><td>${fmt.format(r.venta)}</td><td>${r.tipo === 'ext' ? '-' : (r.tasa*100)+'%'}</td><td>${fmt.format(r.final)}</td></tr>`;
+        });
+
+        document.getElementById('resBase').innerText = fmt.format(base) + " Gs.";
+        document.getElementById('resVar').innerText = fmt.format(sumaVar) + " Gs.";
+        document.getElementById('resNeto').innerText = fmt.format(base + sumaVar) + " Gs.";
+        document.getElementById('auditResumen').innerText = `Total Ventas: Gs. ${fmt.format(sumaVentas)} | Total Comisiones: Gs. ${fmt.format(sumaVar)}`;
+        renderHistorial();
+    }
+
+    function guardarYRender() { localStorage.setItem('cova_v9_actual', JSON.stringify(actual)); renderizar(); }
+
+    function guardarHistorial() {
+        const nombre = document.getElementById('nombreFunc').value;
+        if(!nombre || actual.length === 0) return alert("Faltan datos");
+        const base = tipoDocente === 'fijo' ? (parseInt(document.getElementById('baseInput').value) || 0) : 0;
+        let total = base; actual.forEach(r => total += r.final);
+        const data = { id: editId || Date.now(), nombre, mes: document.getElementById('mesSelect').value, total, base, tipoDocente, detalle: [...actual], fecha: new Date().toLocaleDateString() };
+        if(editId) { historial[historial.findIndex(h => h.id === editId)] = data; editId = null; document.getElementById('btnSave').innerText = "💾 Guardar"; }
+        else { historial.push(data); }
+        localStorage.setItem('cova_v9_hist', JSON.stringify(historial));
+        actual = []; renderizar();
+    }
+
+    function renderHistorial() {
+        const bHist = document.getElementById('bodyHistorial'); bHist.innerHTML = "";
+        historial.forEach(h => { bHist.innerHTML += `<tr><td>${h.fecha}</td><td>${h.nombre}</td><td>${h.mes}</td><td>${fmt.format(h.total)} Gs.</td><td><button onclick="editar(${h.id})">✏️ Ver/Edit</button></td></tr>`; });
+    }
+
+    function editar(id) {
+        const h = historial.find(x => x.id === id);
+        editId = id; document.getElementById('btnSave').innerText = "🆙 Actualizar";
+        document.getElementById('nombreFunc').value = h.nombre; document.getElementById('mesSelect').value = h.mes;
+        document.getElementById('baseInput').value = h.base;
+        setDocenteType(h.tipoDocente);
+        actual = [...h.detalle]; renderizar(); window.scrollTo(0,0);
+    }
+
+    function borrarTodoActual() { if(confirm("¿Vaciar?")) { actual = []; guardarYRender(); } }
+
+    renderizar();
+</script>
+</body>
+</html>

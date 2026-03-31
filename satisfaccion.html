@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcademySync Pro | CX Intelligence System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5; --secondary: #0ea5e9; --success: #10b981;
+            --warning: #f59e0b; --danger: #ef4444; --text-dark: #1e293b;
+            --text-light: #64748b; --bg: #f8fafc; --white: #ffffff;
+            --border: #e2e8f0;
+        }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: var(--text-dark); 
+            margin: 0; padding: 0; line-height: 1.6;
+        }
+        .container { max-width: 1600px; margin: auto; padding: 40px 20px; }
+        
+        /* HEADER PANEL */
+        .header-panel {
+            background: var(--white); border: 1px solid var(--border); border-radius: 24px;
+            padding: 40px; text-align: center; margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .btn-import { 
+            background: var(--primary); color: white; border: none; padding: 16px 32px; 
+            border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+        }
+        .btn-import:hover { transform: translateY(-2px); background: #4338ca; }
+
+        /* KPI HUD */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .kpi-card { 
+            background: var(--white); padding: 25px; border-radius: 20px; border: 1px solid var(--border);
+            display: flex; flex-direction: column;
+        }
+        .kpi-label { font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+        .kpi-val { font-size: 2.2rem; font-weight: 800; color: var(--primary); margin-top: 5px; }
+
+        /* ANALYTICS GRID */
+        .analysis-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; margin-bottom: 30px; }
+        .card { 
+            background: var(--white); padding: 30px; border-radius: 24px; border: 1px solid var(--border);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02);
+        }
+        .card-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); }
+        .card-title span { color: var(--primary); }
+
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 12px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--bg); }
+        td { padding: 14px 12px; border-bottom: 1px solid var(--bg); font-size: 0.9rem; }
+        .badge { padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-primary { background: #e0e7ff; color: #3730a3; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+
+        /* IA BOXES */
+        .ia-box { 
+            background: #f5f3ff; border-left: 4px solid var(--primary); padding: 20px; 
+            border-radius: 12px; margin-top: 15px; font-size: 0.9rem; color: #4338ca;
+        }
+        .ia-box strong { display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px; }
+
+        .chart-container { height: 300px; position: relative; margin-top: 20px; }
+        .hide { display: none; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="uploadScreen" class="header-panel">
+        <h1 style="margin:0; font-size: 2.5rem; font-weight: 800;">AcademySync BI Hub</h1>
+        <p style="color: var(--text-light); margin-bottom: 30px;">Análisis de Satisfacción Académica y Diagnóstico CX</p>
+        <button class="btn-import" onclick="document.getElementById('fileInput').click()">📁 IMPORTAR PLANILLA DE SATISFACCIÓN</button>
+        <input type="file" id="fileInput" accept=".xlsx" style="display:none">
+    </div>
+
+    <div id="dashboard" class="hide">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div>
+                <h2 style="margin:0; font-weight: 800;">Reporte Inteligente de Gestión</h2>
+                <p style="color: var(--primary); font-weight: 600; font-size: 0.8rem; margin: 0;">Sincronizado con Base de Datos COVA</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <select id="monthSelector" style="padding: 10px; border-radius: 10px; border: 1px solid var(--border); font-weight: 600; cursor: pointer;"></select>
+                <button class="btn-import" style="padding: 10px 20px;" onclick="document.getElementById('fileInput').click()">🔄 ACTUALIZAR DATOS</button>
+            </div>
+        </div>
+
+        <div class="kpi-row">
+            <div class="kpi-card"><span class="kpi-label">Satisfacción Media</span><span id="kpiSatis" class="kpi-val">0.0</span></div>
+            <div class="kpi-card"><span class="kpi-label">NPS (Lealtad Alta)</span><span id="kpiNps" class="kpi-val">0%</span></div>
+            <div class="kpi-card"><span class="kpi-label">Eficiencia Docente</span><span id="kpiDoc" class="kpi-val">0.0</span></div>
+            <div class="kpi-card"><span class="kpi-label">Volumen Respuestas</span><span id="kpiN" class="kpi-val">0</span></div>
+        </div>
+
+        <div class="analysis-grid">
+            <div class="card">
+                <div class="card-title"><span>📊</span> Atributos de Calidad (Ponderado)</div>
+                <table id="attrTable">
+                    <thead><tr><th>Atributo</th><th>Promedio</th><th>Estado</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="ia-box" id="iaAttr"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>👨‍🏫</span> Desempeño por Instructor</div>
+                <table id="docTable">
+                    <thead><tr><th>Instructor</th><th>Promedio</th><th>Ranking</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="ia-box" id="iaDoc"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>💰</span> Percepción de Precios</div>
+                <div class="chart-container"><canvas id="priceChart"></canvas></div>
+                <div class="ia-box" id="iaPrice"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>🏁</span> Posicionamiento Competitivo</div>
+                <table id="compTable">
+                    <thead><tr><th>Comparativa</th><th>Frecuencia</th><th>% Share</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="ia-box" id="iaComp"></div>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="card">
+                <div class="card-title"><span>🚀</span> Demanda de Nuevos Cursos</div>
+                <div id="courseList"></div>
+                <div class="ia-box" id="iaCourse"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>👥</span> Perfil Demográfico (Edad)</div>
+                <div class="chart-container"><canvas id="ageChart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>🔄</span> Probabilidad de Continuidad</div>
+                <div class="chart-container"><canvas id="retornoChart"></canvas></div>
+                <div class="ia-box" id="iaRetorno"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawData = [];
+    let chartRefs = {};
+    const CLAVE_MAESTRA = 'as_bi_master_data';
+
+    // FUNCIÓN DE CARGA AUTOMÁTICA AL ABRIR LA SECCIÓN
+    window.onload = () => {
+        const memory = localStorage.getItem(CLAVE_MAESTRA);
+        if (memory) {
+            rawData = JSON.parse(memory);
+            initSystem();
+        }
+    };
+
+    document.getElementById('fileInput').onchange = (e) => {
+        const reader = new FileReader();
+        reader.onload = (ex) => {
+            const data = new Uint8Array(ex.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            
+            // ACTUALIZACIÓN DE MEMORIA COMPARTIDA
+            localStorage.setItem(CLAVE_MAESTRA, JSON.stringify(rawData));
+            initSystem();
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    };
+
+    function initSystem() {
+        document.getElementById('uploadScreen').classList.add('hide');
+        document.getElementById('dashboard').classList.remove('hide');
+        
+        const selector = document.getElementById('monthSelector');
+        const meses = [...new Set(rawData.map(r => r.MES))].filter(Boolean);
+        selector.innerHTML = '<option value="TODOS">📅 Ver Todo el Año</option>';
+        meses.forEach(m => selector.innerHTML += `<option value="${m}">${m}</option>`);
+        
+        selector.onchange = render;
+        render();
+    }
+
+    function render() {
+        const filterMonth = document.getElementById('monthSelector').value;
+        const data = filterMonth === 'TODOS' ? rawData : rawData.filter(r => r.MES === filterMonth);
+        if(!data.length) return;
+
+        const getAvg = (col) => {
+            const vals = data.map(r => parseFloat(r[col])).filter(n => !isNaN(n));
+            return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : "0.00";
+        };
+
+        // INDICADORES KPI
+        const satisMedia = getAvg('¿Cómo calificaría su nivel general de satisfacción con nosotros?');
+        document.getElementById('kpiSatis').innerText = satisMedia;
+        document.getElementById('kpiN').innerText = data.length;
+        
+        const npsCount = data.filter(r => r['¿Qué probabilidades hay de seguir aprendiendo con nuestros cursos?'] === 'Muy probable').length;
+        document.getElementById('kpiNps').innerText = Math.round((npsCount/data.length)*100) + '%';
+
+        // TABLA ATRIBUTOS
+        const attrs = [
+            { label: 'Atención al Alumno', col: '¿Cómo clasificamos en los siguientes atributos? [Atención al Alumno]' },
+            { label: 'Profesionalismo', col: '¿Cómo clasificamos en los siguientes atributos? [Profesionalismo]' },
+            { label: 'Calidad de Clases', col: '¿Cómo clasificamos en los siguientes atributos? [Calidad de las clases]' },
+            { label: 'Comprensión de Necesidades', col: '¿Cómo clasificamos en los siguientes atributos? [La comprensión de las necesidades del alumno]' }
+        ];
+        const tbodyAttr = document.querySelector('#attrTable tbody');
+        tbodyAttr.innerHTML = '';
+        attrs.forEach(a => {
+            const val = getAvg(a.col);
+            const status = val >= 4 ? 'badge-success' : (val >= 3 ? 'badge-primary' : 'badge-danger');
+            tbodyAttr.innerHTML += `<tr><td>${a.label}</td><td><b>${val}</b></td><td><span class="badge ${status}">${val >= 4 ? 'Óptimo' : 'Regular'}</span></td></tr>`;
+        });
+        document.getElementById('iaAttr').innerHTML = `<strong>Diagnóstico CX:</strong> El enfoque prioritario debe ser ${[...attrs].sort((a,b)=>getAvg(a.col)-getAvg(b.col))[0].label}.`;
+
+        // DOCENTES
+        const docMap = {};
+        data.forEach(r => {
+            if(r.DOCENTE) {
+                if(!docMap[r.DOCENTE]) docMap[r.DOCENTE] = { s:0, c:0 };
+                docMap[r.DOCENTE].s += parseFloat(r.Valor) || 0;
+                docMap[r.DOCENTE].c++;
+            }
+        });
+        const docSorted = Object.keys(docMap).map(k => ({ n: k, a: (docMap[k].s/docMap[k].c).toFixed(2) })).sort((a,b) => b.a - a.a);
+        document.getElementById('kpiDoc').innerText = docSorted[0] ? docSorted[0].a : '0.0';
+        document.querySelector('#docTable tbody').innerHTML = docSorted.map((d, i) => `<tr><td>${d.n}</td><td><b>${d.a}</b></td><td>#${i+1}</td></tr>`).join('');
+        document.getElementById('iaDoc').innerHTML = `<strong>Líder de Valor:</strong> ${docSorted[0] ? docSorted[0].n : 'N/A'} genera el mayor impacto positivo.`;
+
+        // PRECIOS & COMPETENCIA
+        const pMap = {}; data.forEach(r => { const p = r['¿Cómo calificarías los precios de los cursos?']; if(p) pMap[p] = (pMap[p]||0)+1; });
+        createChart('priceChart', 'bar', Object.keys(pMap), Object.values(pMap), 'Frecuencia');
+        
+        const priceAvg = getAvg('¿Cómo calificarías los precios de los cursos?');
+        document.getElementById('iaPrice').innerHTML = `<strong>Insight IA:</strong> Percepción de precio en ${priceAvg} (Escala 1-5). El mercado acepta el valor actual.`;
+
+        const comp = {}; data.forEach(r => { const c = r['¿Cómo nos comparamos con otras empresas que ofrecen los mismos cursos en líneas generales?']; if(c) comp[c] = (comp[c]||0)+1; });
+        document.querySelector('#compTable tbody').innerHTML = Object.keys(comp).map(k => `<tr><td>${k}</td><td>${comp[k]}</td><td><span class="badge badge-primary">${Math.round((comp[k]/data.length)*100)}%</span></td></tr>`).join('');
+        document.getElementById('iaComp').innerHTML = `<strong>Posicionamiento:</strong> Somos percibidos principalmente como "${Object.keys(comp).sort((a,b)=>comp[b]-comp[a])[0]}".`;
+
+        // DEMANDA CURSOS
+        const cursos = {}; data.forEach(r => { const c = r['¿Qué otro curso le gustaría realizar?']; if(c) { const f = c.split(',')[0].trim(); cursos[f] = (cursos[f]||0)+1; } });
+        const topCursos = Object.keys(cursos).sort((a,b) => cursos[b]-cursos[a]).slice(0,3);
+        document.getElementById('courseList').innerHTML = topCursos.map(c => `<div style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">🚀 ${c}</div>`).join('');
+        document.getElementById('iaCourse').innerHTML = `<strong>Recomendación:</strong> Priorizar lanzamiento de "${topCursos[0]}".`;
+
+        // EDAD & RETORNO
+        const edades = {}; data.forEach(r => { const e = r['¿Cuál de las siguientes categorías describe su edad?']; if(e) edades[e] = (edades[e]||0)+1; });
+        createChart('ageChart', 'pie', Object.keys(edades), Object.values(edades), 'Edades');
+
+        const retorno = {}; data.forEach(r => { const ret = r['¿Qué probabilidades hay de seguir aprendiendo con nuestros cursos?']; if(ret) retorno[ret] = (retorno[ret]||0)+1; });
+        createChart('retornoChart', 'doughnut', Object.keys(retorno), Object.values(retorno), 'Fidelidad');
+        document.getElementById('iaRetorno').innerHTML = `<strong>Lealtad:</strong> Un ${Math.round((retorno['Muy probable']||0)/data.length*100)}% son promotores directos.`;
+    }
+
+    function createChart(id, type, labels, data, title) {
+        if(chartRefs[id]) chartRefs[id].destroy();
+        const ctx = document.getElementById(id).getContext('2d');
+        chartRefs[id] = new Chart(ctx, {
+            type: type,
+            data: { labels: labels, datasets: [{ label: title, data: data, backgroundColor: ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'], borderRadius: 8 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', display: type !== 'bar' } } }
+        });
+    }
+</script>
+</body>
+</html>

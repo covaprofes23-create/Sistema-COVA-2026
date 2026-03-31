@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Auditoría Académica COVA | Reporte Ligero</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy: #0c2461; --gold: #b8922e; --gray: #f4f7f6; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--gray); margin: 0; padding: 0; }
+        
+        /* Controles */
+        .admin-header { background: var(--navy); color: white; padding: 20px; text-align: center; border-bottom: 5px solid var(--gold); }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 700; text-transform: uppercase; margin: 5px; }
+        .btn-load { background: white; color: var(--navy); }
+        .btn-pdf { background: var(--gold); color: white; display: none; }
+
+        /* Estructura del Informe (Visualización en Pantalla) */
+        .report-page { 
+            background: white; width: 210mm; min-height: 297mm; margin: 20px auto; 
+            padding: 15mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; box-sizing: border-box; 
+        }
+        .header-top { border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo-cova { color: var(--navy); font-size: 24px; font-weight: 800; }
+        .report-title { text-align: center; color: var(--navy); margin-bottom: 20px; text-transform: uppercase; font-size: 18px; }
+
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .data-table th { background: #f8f9fa; text-align: left; padding: 8px; border: 1px solid #ddd; font-size: 10px; color: #7f8c8d; text-transform: uppercase; }
+        .data-table td { padding: 10px; border: 1px solid #ddd; font-size: 13px; }
+
+        /* Bloque de Perfil y Auditoría */
+        .profile-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .profile-card { padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
+        .card-detected { background: #fff5f5; border-top: 4px solid #e74c3c; }
+        .card-required { background: #f0f7ff; border-top: 4px solid #3498db; }
+        .profile-card label { display: block; font-size: 9px; font-weight: 700; color: #636e72; text-transform: uppercase; margin-bottom: 5px; }
+        
+        .audit-text-area { background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--navy); font-size: 12px; line-height: 1.5; }
+
+        /* Lista de Preguntas */
+        .q-matrix { margin-top: 20px; font-size: 10px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+        .q-matrix strong { color: var(--navy); }
+
+        .footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eee; padding-top: 5px; }
+
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="admin-header no-print">
+    <h1>AUDITORÍA ACADEMYSYNC - COVA</h1>
+    <p>Análisis de Brecha Técnica (PDF Optimizado < 5MB)</p>
+    <input type="file" id="inputExcel" accept=".xlsx" style="display:none">
+    <button class="btn btn-load" onclick="document.getElementById('inputExcel').click()">Cargar Excel</button>
+    <button class="btn btn-pdf" id="btnExport" onclick="exportarPDF()">Exportar PDF Ligero</button>
+</div>
+
+<div id="container"></div>
+
+<script>
+    let preguntasGlobal = [];
+
+    document.getElementById('inputExcel').onchange = function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const headers = XLSX.utils.sheet_to_json(sheet, {header: 1})[0];
+            preguntasGlobal = headers.slice(5); // Preguntas reales del test
+            
+            const json = XLSX.utils.sheet_to_json(sheet);
+            renderizarInformes(json);
+            document.getElementById('btnExport').style.display = 'inline-block';
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    function renderizarInformes(data) {
+        const container = document.getElementById('container');
+        container.innerHTML = '';
+
+        data.forEach(al => {
+            const audit = auditar(al);
+            container.innerHTML += `
+                <div class="report-page">
+                    <div class="header-top">
+                        <div class="logo-cova">COVA</div>
+                        <div style="font-size:9px; text-align:right;">ID Auditoría: COVA-${Math.floor(Math.random()*1000)}<br>${new Date().toLocaleDateString()}</div>
+                    </div>
+
+                    <div class="report-title">Informe Estratégico de Nivelación</div>
+
+                    <table class="data-table">
+                        <tr><th>Participante</th><td><strong>${audit.nombre}</strong></td></tr>
+                        <tr><th>Empresa Solicitante</th><td>${audit.empresa}</td></tr>
+                        <tr><th>Puntaje de Auditoría</th><td><strong>${audit.puntos} / 40</strong></td></tr>
+                    </table>
+
+                    <div class="profile-section">
+                        <div class="profile-card card-detected">
+                            <label>Perfil Detectado</label>
+                            <strong>CONOCIMIENTO BÁSICO</strong>
+                        </div>
+                        <div class="profile-card card-required">
+                            <label>Perfil Requerido</label>
+                            <strong>NIVEL INTERMEDIO</strong>
+                        </div>
+                    </div>
+
+                    <div class="audit-text-area">
+                        <strong>Dictamen Técnico de Brecha:</strong><br>
+                        ${audit.dictamen}<br><br>
+                        <strong>Sugerencia Académica:</strong><br>
+                        ${audit.sugerencia}
+                    </div>
+
+                    <div class="q-matrix">
+                        <strong>Preguntas Auditadas en este Proceso:</strong><br>
+                        ${preguntasGlobal.map((q, i) => `${i+1}. ${q.substring(0, 45)}...`).join(' | ')}
+                    </div>
+
+                    <div class="footer">
+                        COVA INSTITUTO EAS | Avda. San Martín 1570 c/ Federación Rusa | Asunción, Paraguay
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function auditar(r) {
+        const pRaw = String(r["Puntuación"] || "0");
+        const puntos = parseInt(pRaw.split('/')[0]) || 0;
+        let dictamen, sugerencia;
+
+        if (puntos >= 30) {
+            dictamen = "El alumno demuestra un conocimiento básico consolidado. Sin embargo, se observa una aplicación mecánica en la resolución de problemas.";
+            sugerencia = "Debe realizar el Módulo Intermedio para alcanzar la agilidad analítica requerida por la organización.";
+        } else {
+            dictamen = "Se detectan brechas críticas en la lógica de fundamentos. El nivel actual no es suficiente para las demandas del perfil requerido.";
+            sugerencia = "Nivelación obligatoria. Debe iniciar el proceso hacia el Nivel Intermedio desde la base de datos.";
+        }
+
+        return {
+            nombre: r["Nombre y Apellido"], empresa: r["Nombre de la empresa"] || "N/A",
+            puntos, dictamen, sugerencia
+        };
+    }
+
+    async function exportarPDF() {
+        const { jsPDF } = window.jspdf;
+        const reports = document.querySelectorAll('.report-page');
+        
+        // Configuración de PDF con compresión alta (JPEG)
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
+            compress: true // Activa compresión interna de jsPDF
+        });
+
+        for (let i = 0; i < reports.length; i++) {
+            // Scale 1.5 es suficiente para lectura clara y mantiene el peso bajo
+            const canvas = await html2canvas(reports[i], { 
+                scale: 1.5, 
+                useCORS: true,
+                logging: false
+            });
+            
+            // Convertimos a JPEG con calidad 0.7 (reduce muchísimo el peso)
+            const imgData = canvas.toDataURL('image/jpeg', 0.7);
+            
+            if (i > 0) pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'MEDIUM');
+        }
+        
+        pdf.save("Auditoria_COVA_Ligera.pdf");
+    }
+</script>
+
+</body>
+</html>
